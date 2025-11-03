@@ -1,0 +1,133 @@
+# Production-ready RunPod serverless ComfyUI worker v3
+# Based on official runpod/worker-comfyui:5.1.0-base with our optimizations
+# Features: runtime model downloads, enhanced handler, multi-stage caching
+
+# ---------------------------
+# Stage 1: custom nodes (build cache)
+# ---------------------------
+FROM runpod/worker-comfyui:5.1.0-base AS custom_nodes
+WORKDIR /comfyui
+ENV COMFY_LOG_LEVEL=DEBUG
+ENV PIP_NO_CACHE_DIR=1
+
+# Install custom nodes using comfy-node-install (official method)
+RUN comfy-node-install https://github.com/city96/ComfyUI-GGUF
+RUN comfy-node-install https://github.com/Fannovel16/ComfyUI-Frame-Interpolation
+RUN comfy-node-install https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite
+RUN comfy-node-install https://github.com/city96/ComfyUI_ExtraModels
+RUN comfy-node-install https://github.com/SeanScripts/ComfyUI-Unload-Model
+
+# Install ComfyUI-Easy-Use separately to handle potential installation issues
+RUN comfy-node-install https://github.com/yolain/ComfyUI-Easy-Use
+
+# Run Easy-Use install script separately with error handling
+RUN if [ -f "/comfyui/custom_nodes/ComfyUI-Easy-Use/install.sh" ]; then \
+      echo "Installing ComfyUI-Easy-Use dependencies..."; \
+      bash "/comfyui/custom_nodes/ComfyUI-Easy-Use/install.sh" || \
+      echo "Warning: ComfyUI-Easy-Use install script failed, continuing..."; \
+    else \
+      echo "No install script found for ComfyUI-Easy-Use"; \
+    fi
+
+# Optional: pin custom nodes to specific commits for deterministic builds
+ARG GGUF_REF=""
+ARG VFI_REF=""
+ARG VHS_REF=""
+ARG EXTRA_REF=""
+ARG UNLOAD_REF=""
+ARG EASY_REF=""
+
+RUN set -e; \
+  if [ -n "$GGUF_REF" ]; then \
+    git -C /comfyui/custom_nodes/ComfyUI-GGUF fetch --all --tags; \
+    git -C /comfyui/custom_nodes/ComfyUI-GGUF checkout "$GGUF_REF"; \
+  fi; \
+  if [ -n "$VFI_REF" ]; then \
+    git -C /comfyui/custom_nodes/ComfyUI-Frame-Interpolation fetch --all --tags; \
+    git -C /comfyui/custom_nodes/ComfyUI-Frame-Interpolation checkout "$VFI_REF"; \
+  fi; \
+  if [ -n "$VHS_REF" ]; then \
+    git -C /comfyui/custom_nodes/ComfyUI-VideoHelperSuite fetch --all --tags; \
+    git -C /comfyui/custom_nodes/ComfyUI-VideoHelperSuite checkout "$VHS_REF"; \
+  fi; \
+  if [ -n "$EXTRA_REF" ]; then \
+    git -C /comfyui/custom_nodes/ComfyUI_ExtraModels fetch --all --tags; \
+    git -C /comfyui/custom_nodes/ComfyUI_ExtraModels checkout "$EXTRA_REF"; \
+  fi; \
+  if [ -n "$UNLOAD_REF" ]; then \
+    git -C /comfyui/custom_nodes/ComfyUI-Unload-Model fetch --all --tags; \
+    git -C /comfyui/custom_nodes/ComfyUI-Unload-Model checkout "$UNLOAD_REF"; \
+  fi; \
+  if [ -n "$EASY_REF" ]; then \
+    git -C /comfyui/custom_nodes/ComfyUI-Easy-Use fetch --all --tags; \
+    git -C /comfyui/custom_nodes/ComfyUI-Easy-Use checkout "$EASY_REF"; \
+  fi
+
+# ---------------------------
+# Stage 2: additional packages (build cache)
+# ---------------------------
+FROM runpod/worker-comfyui:5.1.0-base AS packages
+WORKDIR /comfyui
+ENV COMFY_LOG_LEVEL=DEBUG
+ENV PIP_NO_CACHE_DIR=1
+
+# Install additional Python dependencies for enhanced handler
+RUN pip install --no-cache-dir \
+    fastapi>=0.104.0 \
+    uvicorn[standard]>=0.24.0 \
+    websocket-client>=1.6.0 \
+    python-dotenv>=1.0.0 \
+    opencv-python>=4.8.0 \
+    gguf>=0.13.0
+
+# ---------------------------
+# Stage 3: final optimized image
+# ---------------------------
+FROM runpod/worker-comfyui:5.1.0-base
+
+WORKDIR /comfyui
+ENV COMFY_LOG_LEVEL=DEBUG
+ENV PIP_NO_CACHE_DIR=1
+
+# Copy custom nodes from stage 1
+COPY --from=custom_nodes /comfyui/custom_nodes /comfyui/custom_nodes
+
+# Copy additional packages from stage 2
+COPY --from=packages /opt/venv /opt/venv
+
+# Create directories for runtime model downloads
+RUN mkdir -p /comfyui/models/{vae,clip,checkpoints,upscale_models,text_encoders,diffusion_models,unet,loras} && \
+    mkdir -p /comfyui/custom_nodes/comfyui-frame-interpolation/ckpts/rife && \
+    mkdir -p /comfyui/input && \
+    mkdir -p /comfyui/output && \
+    mkdir -p /src
+
+# Copy model download script
+COPY scripts/download_models.sh /src/download_models.sh
+RUN chmod +x /src/download_models.sh
+
+# Copy enhanced handler and files
+COPY src/handler.v2.py /src/handler.py
+COPY src/api_server.py /src/api_server.py
+COPY src/start.v3.sh /src/start.sh
+
+# Copy validation schemas
+COPY schemas /schemas
+
+# Copy requirements for any additional dependencies
+COPY requirements.txt /src/requirements.txt
+
+# Install any additional requirements
+RUN pip install -r /src/requirements.txt
+
+# Make scripts executable
+RUN chmod +x /src/start.sh
+
+# Set environment variables for performance
+ENV PYTHONUNBUFFERED=true
+ENV HF_HOME="/comfyui"
+
+EXPOSE 3000
+
+# Use our custom start script that downloads models at runtime
+CMD ["/src/start.sh"]

@@ -1,0 +1,15 @@
+# Core dependencies
+runpod>=1.7.0
+requests>=2.31.0
+websocket-client>=1.6.0
+
+# Additional dependencies for image processing
+numpy>=1.24.0
+Pillow>=9.0.0
+opencv-python>=4.8.0
+gguf>=0.13.0
+
+# ComfyUI dependencies (already included in base image, but listed for reference)
+# torch>=2.0.0
+# torchvision>=0.15.0
+# transformers>=4.30.0
