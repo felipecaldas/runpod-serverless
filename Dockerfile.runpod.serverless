@@ -1,4 +1,4 @@
-# Production-ready RunPod serverless ComfyUI worker v3
+# Production-ready RunPod serverless ComfyUI worker
 # Based on official runpod/worker-comfyui:5.1.0-base with our optimizations
 # Features: runtime model downloads, enhanced handler, multi-stage caching
 
@@ -107,9 +107,9 @@ COPY scripts/download_models.sh /src/download_models.sh
 RUN chmod +x /src/download_models.sh
 
 # Copy enhanced handler and files
-COPY src/handler.v2.py /src/handler.py
+COPY src/handler.py /src/handler.py
 COPY src/api_server.py /src/api_server.py
-COPY src/start.v3.sh /src/start.sh
+COPY src/start.sh /src/start.sh
 
 # Copy validation schemas
 COPY schemas /schemas

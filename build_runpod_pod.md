@@ -23,12 +23,12 @@ Works on Windows 11 PowerShell and uses Docker Hub as the registry.
 cd y:\projects\edit-videos
 
 docker build `
-  -f .\Dockerfile.runpod.serverless.v3 `
+  -f .\Dockerfile.runpod.serverless `
   -t fcaldas/tabario.com:1.0-wan22 `
   .
 ```
 
-**Note**: This uses `Dockerfile.runpod.serverless.v3` which:
+**Note**: This uses `Dockerfile.runpod.serverless` which:
 - Downloads only 7 required models (~37GB) via wget in a single RUN layer
 - Uses multi-stage builds for optimal caching
 - Results in a 97GB image (vs 177GB with all models)
@@ -208,7 +208,7 @@ cd y:\projects\edit-videos
 
 # Build with new version tag
 docker build `
-  -f .\Dockerfile.runpod.serverless.v3 `
+  -f .\Dockerfile.runpod.serverless `
   -t fcaldas/tabario.com:1.1-wan22 `
   .
 

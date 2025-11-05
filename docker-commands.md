@@ -4,7 +4,7 @@
 
 ```powershell
 # Build the image (no models included - much faster/smaller)
-docker build --platform linux/amd64 -f Dockerfile.runpod.serverless.v3 -t runpod-comfyui-serverless:1.0 .
+docker build --platform linux/amd64 -f Dockerfile.runpod.serverless -t runpod-comfyui-serverless:1.0 .
 ```
 
 ## Test the Container
@@ -53,7 +53,7 @@ docker push your-registry/runpod-comfyui-serverless:1.0
 docker images runpod-comfyui-serverless:1.0
 
 # View build logs
-docker build --platform linux/amd64 -f Dockerfile.runpod.serverless.v3 -t runpod-comfyui-serverless:1.0 . --progress=plain
+docker build --platform linux/amd64 -f Dockerfile.runpod.serverless -t runpod-comfyui-serverless:1.0 . --progress=plain
 
 # Clean up if needed
 docker rmi runpod-comfyui-serverless:1.0

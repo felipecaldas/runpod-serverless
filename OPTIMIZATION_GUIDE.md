@@ -6,7 +6,7 @@ This document explains the optimization from our original approach to the new se
 
 ## Original Approach vs Optimized Approach
 
-### Original (Dockerfile.runpod.serverless.v3)
+### Original (Dockerfile.runpod.serverless)
 - **Base Image**: `runpod/worker-comfyui:5.1.0-base` (~90GB)
 - **Model Storage**: Models baked into image
 - **Image Size**: ~97GB
@@ -144,13 +144,12 @@ Image: fcaldas/tabario.com:2.0-optimized
 
 ```
 runpod-serverless/
-├── Dockerfile.runpod.serverless.v3          # Original (97GB)
+├── Dockerfile.runpod.serverless          # Original (97GB)
 ├── Dockerfile.runpod.serverless.v2       # Optimized (5GB)
 ├── src/
-│   ├── start.sh                          # Original startup script
-│   ├── start.v2.sh                       # Optimized startup script
-│   ├── handler.py                        # RunPod handler
-│   └── api_server.py                     # Local API server
+│   ├── handler.py              # Enhanced RunPod handler
+│   ├── api_server.py          # Local API server
+│   └── start.sh                # Production startup script
 ├── scripts/
 │   └── download_models.sh                # Runtime model download script
 ├── build_optimized.sh                    # Optimized build script

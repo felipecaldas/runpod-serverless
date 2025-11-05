@@ -6,9 +6,9 @@ This project implements a custom RunPod serverless worker that forwards requests
 
 The solution consists of:
 
-1. **Custom Handler** (`src/handler.py`) - Implements the RunPod serverless API specification
-2. **Start Script** (`src/start.sh`) - Manages ComfyUI startup and handler initialization  
-3. **Docker Configuration** (`Dockerfile.runpod.serverless.v3`) - Builds the complete container image
+1. **Custom Handler** (`src/handler.py`) - Enhanced RunPod serverless API with validation and monitoring
+2. **Start Script** (`src/start.sh`) - Production startup with runtime model downloads  
+3. **Docker Configuration** (`Dockerfile.runpod.serverless`) - Builds the complete container image
 4. **Dependencies** (`requirements.txt`) - Python packages for the handler
 
 ## Key Features
@@ -29,8 +29,8 @@ The solution consists of:
 cd y:\projects\runpod-serverless
 
 docker build `
-  -f .\Dockerfile.runpod.serverless.v3 `
-  -t your-dockerhub-username/runpod-comfyui-serverless:1.0 `
+  -f .\Dockerfile.runpod.serverless `
+  -t fcaldas/tabario.com:1.0-wan22 `
   .
 ```
 
@@ -40,9 +40,10 @@ docker build `
 # Test with CPU only
 docker run --rm -it `
   -e SERVE_API_LOCALLY=true `
+  -e COMFYUI_WORKFLOW=i2v-wan22 `
   -p 3000:3000 `
   -v "${PWD}\test_input.json:/workspace/test_input.json" `
-  your-dockerhub-username/runpod-comfyui-serverless:1.0
+  fcaldas/tabario.com:1.0-wan22
 ```
 
 The API will be available at `http://localhost:3000` with endpoints:
@@ -54,18 +55,58 @@ The API will be available at `http://localhost:3000` with endpoints:
 
 ```powershell
 docker login
-docker push your-dockerhub-username/runpod-comfyui-serverless:1.0
+docker push fcaldas/tabario.com:1.0-wan22
 ```
 
 ### 4. Deploy to RunPod
 
 1. Go to RunPod Console → Serverless → Templates
 2. Create new template with:
-   - **Container Image**: `your-dockerhub-username/runpod-comfyui-serverless:1.0`
+   - **Container Image**: `fcaldas/tabario.com:1.0-wan22`
    - **Container Disk**: 100 GB
    - **GPU**: 16-24 GB VRAM recommended
-   - **Environment Variables**: None required
+   - **Environment Variables**:
+     - `COMFYUI_WORKFLOW=<workflow>` (see [Runtime Workflow Selection](#runtime-workflow-selection))
+     - `CIVITAI_API_KEY=<token>` when using Civitai-hosted models
 3. Deploy the template as a serverless endpoint
+
+## Runtime Workflow Selection
+
+The container downloads models at startup based on the `COMFYUI_WORKFLOW` environment variable. Supported values and requirements:
+
+| Workflow label | `COMFYUI_WORKFLOW` | Description | Additional requirements |
+| -------------- | ------------------ | ----------- | ----------------------- |
+| Wan 2.2 I2V Lightning | `i2v-wan22` | Image-to-video workflow using Wan 2.2 GGUF UNet pairs and LoRAs | None |
+| Qwen Image Fast | `t2i-qwen` | Text-to-image workflow using Qwen Image distilled UNet | None |
+| Chroma Anime AIO | `t2i-chroma-anime` | Anime-focused text-to-image checkpoint hosted on Civitai | `CIVITAI_API_KEY` (Bearer token) |
+| Kids Crayon Illustration | `t2i-kids-crayon` | Illustration workflow using IllustriousXL checkpoint and RealESRGAN upscaler | None |
+
+### Run container for each workflow
+
+```powershell
+# Wan 2.2 image-to-video
+docker run --rm -it `
+  -e COMFYUI_WORKFLOW=i2v-wan22 `
+  fcaldas/tabario.com:1.0-wan22
+
+# Qwen text-to-image
+docker run --rm -it `
+  -e COMFYUI_WORKFLOW=t2i-qwen `
+  fcaldas/tabario.com:1.0-wan22
+
+# Chroma Anime (requires CIVITAI API token)
+docker run --rm -it `
+  -e COMFYUI_WORKFLOW=t2i-chroma-anime `
+  -e CIVITAI_API_KEY=your-civitai-token `
+  fcaldas/tabario.com:1.0-wan22
+
+# Kids Crayon illustration
+docker run --rm -it `
+  -e COMFYUI_WORKFLOW=t2i-kids-crayon `
+  fcaldas/tabario.com:1.0-wan22
+```
+
+> **Note:** The Chroma Anime workflow pulls its checkpoint via the Civitai API. Generate a personal access token in your Civitai account settings and provide it through `CIVITAI_API_KEY`.
 
 ## API Usage
 
@@ -119,6 +160,8 @@ curl -X POST \
 | `SERVE_API_LOCALLY` | `false` | Enable local API testing mode |
 | `COMFY_LOG_LEVEL` | `DEBUG` | ComfyUI logging level |
 | `BUCKET_ENDPOINT_URL` | - | S3 endpoint for image uploads |
+| `COMFYUI_WORKFLOW` | - | Selects which workflow-specific models to download (see [Runtime Workflow Selection](#runtime-workflow-selection)) |
+| `CIVITAI_API_KEY` | - | Required to download Civitai-hosted models (e.g., `t2i-chroma-anime`) |
 
 ### S3 Configuration (Optional)
 
@@ -186,7 +229,7 @@ Include base64-encoded images in the request:
 
 ### Adding Custom Models/Nodes
 
-Modify `Dockerfile.runpod.serverless.v3`:
+Modify `Dockerfile.runpod.serverless`:
 
 ```dockerfile
 # Add custom nodes
@@ -231,9 +274,10 @@ ENV COMFY_LOG_LEVEL=DEBUG
 ```
 runpod-serverless/
 ├── src/
-│   ├── handler.py              # Main RunPod handler implementation
-│   └── start.sh                # Startup script
-├── Dockerfile.runpod.serverless.v3 # Docker build configuration
+│   ├── handler.py              # Enhanced RunPod handler with validation
+│   ├── api_server.py          # Local API server for testing
+│   └── start.sh                # Production startup script
+├── Dockerfile.runpod.serverless # Docker build configuration
 ├── requirements.txt            # Python dependencies
 ├── test_input.json            # Example workflow for testing
 └── README.md                  # This file

@@ -176,14 +176,14 @@ DISK_MIN_FREE_BYTES=524288000  # 500MB
 ### 1. Update Dockerfile
 ```dockerfile
 # Copy new handler and schemas
-COPY src/handler.v2.py /src/handler.py
+COPY src/handler.py /src/handler.py
 COPY schemas /schemas
 ```
 
 ### 2. Update Start Script
 ```bash
 # Use production handler instead of API server
-python handler.py  # Instead of python api_server.py
+python handler.py  # Enhanced production handler
 ```
 
 ### 3. Update Dependencies

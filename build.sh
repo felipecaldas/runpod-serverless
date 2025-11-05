@@ -9,8 +9,8 @@ echo "Building RunPod serverless ComfyUI worker v3 (official base + optimization
 
 # Build arguments
 IMAGE_NAME="fcaldas/tabario.com"
-IMAGE_TAG="3.0-official-base"
-DOCKERFILE="Dockerfile.runpod.serverless.v3"
+IMAGE_TAG="1.0-wan22"
+DOCKERFILE="Dockerfile.runpod.serverless"
 
 echo "Building image: $IMAGE_NAME:$IMAGE_TAG"
 echo "Using Dockerfile: $DOCKERFILE"

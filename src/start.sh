@@ -1,53 +1,84 @@
 #!/bin/bash
 
-# Start script for RunPod serverless worker with ComfyUI
-# This script starts ComfyUI in the background and then launches the RunPod handler
+# Production start script for RunPod serverless worker
+# Based on official runpod/worker-comfyui:5.1.0-base with runtime model downloads
 
 set -e
 
-echo "Starting RunPod serverless worker with ComfyUI..."
+echo "Starting RunPod serverless worker (official base + optimizations)..."
 
 # Set working directory
 cd /comfyui
 
-# Activate virtual environment
-source /opt/venv/bin/activate
-
-# Start ComfyUI in the background
-echo "Starting ComfyUI server..."
-# Use CPU mode for testing when no GPU is available
-if [ "$CUDA_VISIBLE_DEVICES" = "" ] || [ "$FORCE_CPU" = "true" ]; then
-    echo "Starting ComfyUI in CPU mode..."
-    python main.py --listen 0.0.0.0 --port 8188 --cpu &
+# Download models at runtime (only if not already present)
+# Check for a key model to determine if models need downloading
+if [ ! -f "/comfyui/models/checkpoints/v1-5-pruned-emaonly-fp16.safetensors" ]; then
+    echo "Models not found, downloading at runtime..."
+    /src/download_models.sh
 else
-    echo "Starting ComfyUI in GPU mode..."
-    python main.py --listen 0.0.0.0 --port 8188 &
+    echo "Models already present, skipping download"
 fi
-COMFY_PID=$!
 
-# Wait for ComfyUI to be ready
-echo "Waiting for ComfyUI to be ready..."
-echo "ComfyUI typically takes 30-60 seconds to start..."
-sleep 45
+echo "Starting ComfyUI server..."
 
-echo "Starting RunPod handler API..."
-
-# Check if we should run container tests
-if [ "$RUN_CONTAINER_TESTS" = "true" ]; then
-    echo "Running container tests..."
-    # Wait a bit more for ComfyUI to fully initialize
-    sleep 10
-    # Run the container test suite
-    python /src/test_container.py
-    TEST_RESULT=$?
+# Check if we should run the local API server for testing
+if [ "$SERVE_API_LOCALLY" = "true" ]; then
+    echo "Starting ComfyUI with local API server for testing..."
     
-    echo "Container tests completed with exit code: $TEST_RESULT"
+    # Start ComfyUI in the background
+    if [ "$FORCE_CPU" = "true" ]; then
+        echo "Starting ComfyUI in CPU mode..."
+        python main.py --listen 0.0.0.0 --port 8188 --cpu &
+    else
+        echo "Starting ComfyUI in GPU mode..."
+        python main.py --listen 0.0.0.0 --port 8188 &
+    fi
+    COMFY_PID=$!
+    
+    # Wait for ComfyUI to be ready
+    echo "Waiting for ComfyUI to be ready..."
+    sleep 45
+    
+    # Start the local API server for testing
+    echo "Starting local API server for testing..."
+    cd /src
+    python api_server.py
+    
+    # Clean up
+    kill $COMFY_PID 2>/dev/null || true
+else
+    # Production mode: Start ComfyUI first, then RunPod handler
+    echo "Starting ComfyUI server for production..."
+    
+    # Start ComfyUI in the background
+    if [ "$FORCE_CPU" = "true" ]; then
+        echo "Starting ComfyUI in CPU mode..."
+        python main.py --listen 0.0.0.0 --port 8188 --cpu &
+    else
+        echo "Starting ComfyUI in GPU mode..."
+        python main.py --listen 0.0.0.0 --port 8188 &
+    fi
+    COMFY_PID=$!
+    
+    # Wait for ComfyUI to be ready
+    echo "Waiting for ComfyUI to be ready..."
+    sleep 45
+    
+    # Verify ComfyUI is running
+    echo "Checking ComfyUI health..."
+    if python -c "import requests; requests.get('http://127.0.0.1:8188/system_stats', timeout=5)" 2>/dev/null; then
+        echo "✅ ComfyUI is ready and responding"
+    else
+        echo "❌ ComfyUI failed to start properly"
+        exit 1
+    fi
+    
+    # Start the RunPod handler
+    echo "Starting RunPod handler in production mode..."
+    cd /src
+    python handler.py
+    
+    # Clean up (this will run when handler exits)
+    echo "Cleaning up..."
+    kill $COMFY_PID 2>/dev/null || true
 fi
-
-# Start the RunPod handler API
-cd /src
-echo "Starting RunPod handler API locally for testing..."
-python /src/api_server.py
-
-# Clean up
-kill $COMFY_PID 2>/dev/null || true

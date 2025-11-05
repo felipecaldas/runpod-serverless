@@ -14,8 +14,8 @@ We've successfully created a **production-grade RunPod serverless ComfyUI worker
 
 #### Core Files
 - `Dockerfile.runpod.serverless.v2` - Optimized multi-stage build
-- `src/handler.v2.py` - Production-grade handler
-- `src/start.v2.sh` - Enhanced startup script
+- `src/handler.py` - Production-grade handler
+- `src/start.sh` - Production startup script with runtime model downloads
 - `schemas/input.py` - Input validation schema
 
 #### Supporting Files
