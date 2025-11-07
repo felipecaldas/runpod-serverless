@@ -1,6 +1,6 @@
 # Production-ready RunPod serverless ComfyUI worker
 # Based on official runpod/worker-comfyui:5.1.0-base with our optimizations
-# Features: runtime model downloads, enhanced handler, multi-stage caching
+# Features: shared models via /runpod-volume symlinks, enhanced handler, multi-stage caching
 
 # ---------------------------
 # Stage 1: custom nodes (build cache)
@@ -78,7 +78,9 @@ RUN pip install --no-cache-dir \
     websocket-client>=1.6.0 \
     python-dotenv>=1.0.0 \
     opencv-python>=4.8.0 \
-    gguf>=0.13.0
+    gguf>=0.13.0 \
+    sentencepiece>=0.1.99 \
+    protobuf>=4.25.3
 
 # ---------------------------
 # Stage 3: final optimized image
@@ -95,16 +97,20 @@ COPY --from=custom_nodes /comfyui/custom_nodes /comfyui/custom_nodes
 # Copy additional packages from stage 2
 COPY --from=packages /opt/venv /opt/venv
 
-# Create directories for runtime model downloads
+# Create directories for ComfyUI runtime
 RUN mkdir -p /comfyui/models/{vae,clip,checkpoints,upscale_models,text_encoders,diffusion_models,unet,loras} && \
     mkdir -p /comfyui/custom_nodes/comfyui-frame-interpolation/ckpts/rife && \
     mkdir -p /comfyui/input && \
     mkdir -p /comfyui/output && \
     mkdir -p /src
 
-# Copy model download script
-COPY scripts/download_models.sh /src/download_models.sh
-RUN chmod +x /src/download_models.sh
+# Note: We no longer download models in the image or at runtime.
+# Models are provided via a RunPod network volume mounted at /runpod-volume.
+# The start script will create symlinks from /runpod-volume/comfyui/models to /comfyui/models.
+
+# Copy workflow templates
+RUN mkdir -p /workflows
+COPY workflows/I2V-Wan-2.2-Lightning-runpod.json /workflows/I2V-Wan-2.2-Lightning-runpod.json
 
 # Copy enhanced handler and files
 COPY src/handler.py /src/handler.py
@@ -129,5 +135,5 @@ ENV HF_HOME="/comfyui"
 
 EXPOSE 3000
 
-# Use our custom start script that downloads models at runtime
+# Use our custom start script that sets up symlinks to shared models at runtime
 CMD ["/src/start.sh"]

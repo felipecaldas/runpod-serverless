@@ -20,6 +20,7 @@ import base64
 import uuid
 import logging
 import logging.handlers
+from io import BytesIO
 import runpod
 from runpod.serverless.utils.rp_validator import validate
 from runpod.serverless.modules.rp_logger import RunPodLogger
@@ -28,6 +29,7 @@ from typing import Dict, Any, List, Optional
 import tempfile
 import socket
 import websocket
+from PIL import Image
 
 
 # Configuration constants
@@ -48,15 +50,30 @@ if os.environ.get("WEBSOCKET_TRACE", "false").lower() == "true":
 
 # Input schema for validation
 INPUT_SCHEMA = {
-    'workflow': {
-        'type': dict,
+    'prompt': {
+        'type': str,
         'required': True,
-        'constraints': lambda workflow: isinstance(workflow, dict) and workflow
+        'constraints': lambda prompt: isinstance(prompt, str) and len(prompt) > 0
     },
-    'images': {
-        'type': list,
+    'image': {
+        'type': str,
+        'required': True,
+        'constraints': lambda image: isinstance(image, str) and len(image) > 0
+    },
+    'width': {
+        'type': int,
         'required': False,
-        'default': []
+        'default': 480
+    },
+    'height': {
+        'type': int,
+        'required': False,
+        'default': 640
+    },
+    'length': {
+        'type': int,
+        'required': False,
+        'default': 81
     },
     'comfy_org_api_key': {
         'type': str,
@@ -336,63 +353,52 @@ def check_server(url, retries=500, delay=50):
     return False
 
 
-def upload_images(images):
-    """Upload base64 images to ComfyUI."""
-    if not images:
-        return {"status": "success", "message": "No images to upload"}
+def upload_image_to_comfyui(image_data_uri: str, job_id: str, width: int, height: int) -> str:
+    """Upload a single base64 image to ComfyUI and return the uploaded filename.
 
-    responses = []
-    upload_errors = []
+    The image will be resized to the requested width/height to match Wan I2V requirements.
+    """
+    try:
+        # Strip data URI prefix if present
+        if "," in image_data_uri:
+            base64_data = image_data_uri.split(",", 1)[1]
+        else:
+            base64_data = image_data_uri
 
-    logging.info(f"Uploading {len(images)} image(s)")
+        blob = base64.b64decode(base64_data)
+        image = Image.open(BytesIO(blob)).convert("RGB")
 
-    for image in images:
+        if image.size != (width, height):
+            logging.info(
+                f"Resizing input image from {image.size[0]}x{image.size[1]} to {width}x{height}",
+                job_id
+            )
+            image = image.resize((width, height), Image.LANCZOS)
+
+        # Generate unique filename
+        filename = f"{uuid.uuid4()}.png"
+
+        # Use temporary file approach
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as temp_file:
+            image.save(temp_file, format="PNG")
+            temp_file_path = temp_file.name
+
         try:
-            name = image["name"]
-            image_data_uri = image["image"]
+            with open(temp_file_path, 'rb') as f:
+                files = {"image": (filename, f, "image/png"), "overwrite": (None, "true")}
+                response = requests.post(f"{BASE_URI}/upload/image", files=files, timeout=30)
+                response.raise_for_status()
 
-            # Strip data URI prefix if present
-            if "," in image_data_uri:
-                base64_data = image_data_uri.split(",", 1)[1]
-            else:
-                base64_data = image_data_uri
+            logging.info(f"Successfully uploaded image as {filename}", job_id)
+            return filename
 
-            blob = base64.b64decode(base64_data)
+        finally:
+            os.unlink(temp_file_path)
 
-            # Upload to ComfyUI
-            files = {
-                "image": (name, tempfile.NamedTemporaryFile().write(blob), "image/png"),
-                "overwrite": (None, "true"),
-            }
-
-            # Use temporary file approach
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as temp_file:
-                temp_file.write(blob)
-                temp_file_path = temp_file.name
-
-            try:
-                with open(temp_file_path, 'rb') as f:
-                    files = {"image": (name, f, "image/png"), "overwrite": (None, "true")}
-                    response = requests.post(f"{BASE_URI}/upload/image", files=files, timeout=30)
-                    response.raise_for_status()
-
-                responses.append(f"Successfully uploaded {name}")
-                logging.info(f"Successfully uploaded {name}")
-
-            finally:
-                os.unlink(temp_file_path)
-
-        except Exception as e:
-            error_msg = f"Error uploading image {image.get('name', 'unknown')}: {e}"
-            logging.error(error_msg)
-            upload_errors.append(error_msg)
-
-    return {
-        "status": "success" if not upload_errors else "partial_success",
-        "message": f"Uploaded {len(responses)}/{len(images)} images",
-        "details": responses,
-        "errors": upload_errors
-    }
+    except Exception as e:
+        error_msg = f"Error uploading image: {e}"
+        logging.error(error_msg, job_id)
+        raise Exception(error_msg)
 
 
 def create_unique_filename_prefix(workflow):
@@ -490,6 +496,39 @@ def upload_to_s3(image_data, filename, job_id):
 # ---------------------------------------------------------------------------- #
 #                                Main Handler                                   #
 # ---------------------------------------------------------------------------- #
+def load_workflow_template() -> Dict[str, Any]:
+    """Load the I2V workflow template from disk."""
+    template_path = '/workflows/I2V-Wan-2.2-Lightning-runpod.json'
+    try:
+        with open(template_path, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        raise Exception(f"Workflow template not found at {template_path}")
+    except json.JSONDecodeError as e:
+        raise Exception(f"Invalid JSON in workflow template: {e}")
+
+
+def substitute_workflow_placeholders(workflow: Dict[str, Any], prompt: str, image_filename: str) -> Dict[str, Any]:
+    """Replace {{ VIDEO_PROMPT }} and {{ INPUT_IMAGE }} placeholders in workflow."""
+    workflow_str = json.dumps(workflow)
+    workflow_str = workflow_str.replace('{{ VIDEO_PROMPT }}', prompt)
+    workflow_str = workflow_str.replace('{{ INPUT_IMAGE }}', image_filename)
+    return json.loads(workflow_str)
+
+
+def set_workflow_dimensions(workflow: Dict[str, Any], width: int, height: int, length: int) -> None:
+    """Set dimensions in WanImageToVideo node."""
+    for _, node in workflow.items():
+        if isinstance(node, dict) and node.get('class_type') == 'WanImageToVideo':
+            inputs = node.get('inputs', {})
+            inputs['width'] = width
+            inputs['height'] = height
+            inputs['length'] = length
+            logging.info(f"Set workflow dimensions: {width}x{height}, length={length}")
+            return
+    raise ValueError("WanImageToVideo node not found in workflow template")
+
+
 def handler(event):
     """Main RunPod handler function with enhanced error handling and monitoring."""
     job_id = event['id']
@@ -522,25 +561,37 @@ def handler(event):
             }
 
         job_input = validated_input['validated_input']
-        workflow = job_input['workflow']
-        images = job_input.get('images', [])
+        prompt = job_input['prompt']
+        image_b64 = job_input['image']
+        width = job_input.get('width', 480)
+        height = job_input.get('height', 640)
+        length = job_input.get('length', 81)
         comfy_org_api_key = job_input.get('comfy_org_api_key')
 
-        logging.info(f"Processing workflow with {len(images)} input images", job_id)
+        logging.info(f"Processing I2V workflow: prompt='{prompt[:50]}...', dimensions={width}x{height}, length={length}", job_id)
 
         # Set Comfy.org API key if provided
         if comfy_org_api_key:
             os.environ["COMFY_ORG_API_KEY"] = comfy_org_api_key
 
-        # Upload input images
-        if images:
-            upload_result = upload_images(images)
-            if upload_result['status'] == 'partial_success':
-                logging.warning(f"Some images failed to upload: {upload_result['errors']}", job_id)
-
         # Ensure ComfyUI is ready
         if not check_server(BASE_URI, COMFY_API_AVAILABLE_MAX_RETRIES, COMFY_API_AVAILABLE_INTERVAL_MS):
             raise Exception("ComfyUI server is not ready")
+
+        # Upload input image to ComfyUI
+        logging.info("Uploading input image to ComfyUI", job_id)
+        uploaded_filename = upload_image_to_comfyui(image_b64, job_id, width, height)
+
+        # Load workflow template
+        logging.info("Loading I2V workflow template", job_id)
+        workflow = load_workflow_template()
+
+        # Substitute placeholders
+        logging.info("Substituting workflow placeholders", job_id)
+        workflow = substitute_workflow_placeholders(workflow, prompt, uploaded_filename)
+
+        # Set dimensions
+        set_workflow_dimensions(workflow, width, height, length)
 
         # Add unique filename prefix to prevent race conditions
         create_unique_filename_prefix(workflow)

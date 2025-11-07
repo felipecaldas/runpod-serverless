@@ -10,13 +10,27 @@ echo "Starting RunPod serverless worker (official base + optimizations)..."
 # Set working directory
 cd /comfyui
 
-# Download models at runtime (only if not already present)
-# Check for a key model to determine if models need downloading
-if [ ! -f "/comfyui/models/checkpoints/v1-5-pruned-emaonly-fp16.safetensors" ]; then
-    echo "Models not found, downloading at runtime..."
-    /src/download_models.sh
+# Setup symlinks to models from RunPod network volume
+echo "Setting up model symlinks from /runpod-volume..."
+
+VOLUME_MODELS="/runpod-volume/comfyui/models"
+LOCAL_MODELS="/comfyui/models"
+
+mkdir -p "$LOCAL_MODELS"
+
+if [ -d "$VOLUME_MODELS" ]; then
+    echo "Linking model subfolders from $VOLUME_MODELS into $LOCAL_MODELS"
+    for sub in vae clip checkpoints unet loras upscale_models text_encoders diffusion_models; do
+        src="$VOLUME_MODELS/$sub"
+        dst="$LOCAL_MODELS/$sub"
+        if [ -d "$src" ]; then
+            rm -rf "$dst"
+            ln -s "$src" "$dst"
+            echo "  -> $sub"
+        fi
+    done
 else
-    echo "Models already present, skipping download"
+    echo "Warning: $VOLUME_MODELS not found. Proceeding without shared models."
 fi
 
 echo "Starting ComfyUI server..."

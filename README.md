@@ -7,7 +7,7 @@ This project implements a custom RunPod serverless worker that forwards requests
 The solution consists of:
 
 1. **Custom Handler** (`src/handler.py`) - Enhanced RunPod serverless API with validation and monitoring
-2. **Start Script** (`src/start.sh`) - Production startup with runtime model downloads  
+2. **Start Script** (`src/start.sh`) - Production startup with symlinks to shared models  
 3. **Docker Configuration** (`Dockerfile.runpod.serverless`) - Builds the complete container image
 4. **Dependencies** (`requirements.txt`) - Python packages for the handler
 
@@ -40,7 +40,6 @@ docker build `
 # Test with CPU only
 docker run --rm -it `
   -e SERVE_API_LOCALLY=true `
-  -e COMFYUI_WORKFLOW=i2v-wan22 `
   -p 3000:3000 `
   -v "${PWD}\test_input.json:/workspace/test_input.json" `
   fcaldas/tabario.com:1.0-wan22
@@ -66,47 +65,14 @@ docker push fcaldas/tabario.com:1.0-wan22
    - **Container Disk**: 100 GB
    - **GPU**: 16-24 GB VRAM recommended
    - **Environment Variables**:
-     - `COMFYUI_WORKFLOW=<workflow>` (see [Runtime Workflow Selection](#runtime-workflow-selection))
-     - `CIVITAI_API_KEY=<token>` when using Civitai-hosted models
+     - `CIVITAI_API_KEY=<token>` when using Civitai-hosted models (only needed if you later enable runtime downloads)
 3. Deploy the template as a serverless endpoint
 
-## Runtime Workflow Selection
+## Models via Network Volume
 
-The container downloads models at startup based on the `COMFYUI_WORKFLOW` environment variable. Supported values and requirements:
+This container uses a RunPod Network Volume mounted at `/runpod-volume`. On startup, it creates symlinks from `/runpod-volume/comfyui/models/<subfolder>` to `/comfyui/models/<subfolder>` so ComfyUI can load shared models without downloading.
 
-| Workflow label | `COMFYUI_WORKFLOW` | Description | Additional requirements |
-| -------------- | ------------------ | ----------- | ----------------------- |
-| Wan 2.2 I2V Lightning | `i2v-wan22` | Image-to-video workflow using Wan 2.2 GGUF UNet pairs and LoRAs | None |
-| Qwen Image Fast | `t2i-qwen` | Text-to-image workflow using Qwen Image distilled UNet | None |
-| Chroma Anime AIO | `t2i-chroma-anime` | Anime-focused text-to-image checkpoint hosted on Civitai | `CIVITAI_API_KEY` (Bearer token) |
-| Kids Crayon Illustration | `t2i-kids-crayon` | Illustration workflow using IllustriousXL checkpoint and RealESRGAN upscaler | None |
-
-### Run container for each workflow
-
-```powershell
-# Wan 2.2 image-to-video
-docker run --rm -it `
-  -e COMFYUI_WORKFLOW=i2v-wan22 `
-  fcaldas/tabario.com:1.0-wan22
-
-# Qwen text-to-image
-docker run --rm -it `
-  -e COMFYUI_WORKFLOW=t2i-qwen `
-  fcaldas/tabario.com:1.0-wan22
-
-# Chroma Anime (requires CIVITAI API token)
-docker run --rm -it `
-  -e COMFYUI_WORKFLOW=t2i-chroma-anime `
-  -e CIVITAI_API_KEY=your-civitai-token `
-  fcaldas/tabario.com:1.0-wan22
-
-# Kids Crayon illustration
-docker run --rm -it `
-  -e COMFYUI_WORKFLOW=t2i-kids-crayon `
-  fcaldas/tabario.com:1.0-wan22
-```
-
-> **Note:** The Chroma Anime workflow pulls its checkpoint via the Civitai API. Generate a personal access token in your Civitai account settings and provide it through `CIVITAI_API_KEY`.
+Ensure your volume contains the expected ComfyUI subfolders and files, e.g. `vae`, `clip`, `unet`, `loras`, `checkpoints`, etc.
 
 ## API Usage
 
@@ -160,7 +126,6 @@ curl -X POST \
 | `SERVE_API_LOCALLY` | `false` | Enable local API testing mode |
 | `COMFY_LOG_LEVEL` | `DEBUG` | ComfyUI logging level |
 | `BUCKET_ENDPOINT_URL` | - | S3 endpoint for image uploads |
-| `COMFYUI_WORKFLOW` | - | Selects which workflow-specific models to download (see [Runtime Workflow Selection](#runtime-workflow-selection)) |
 | `CIVITAI_API_KEY` | - | Required to download Civitai-hosted models (e.g., `t2i-chroma-anime`) |
 
 ### S3 Configuration (Optional)
@@ -177,27 +142,36 @@ BUCKET_NAME=your_bucket_name
 
 ## Input Format
 
-### Workflow JSON
-
-Export your ComfyUI workflow using **Workflow → Export (API)** in the ComfyUI interface.
-
-### Input Images
-
-Include base64-encoded images in the request:
+The handler uses a template-based approach for the I2V Wan 2.2 workflow. Send a simple JSON payload:
 
 ```json
 {
   "input": {
-    "workflow": { ... },
-    "images": [
-      {
-        "name": "input_image.png",
-        "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg..."
-      }
-    ]
+    "prompt": "A beautiful sunset over the ocean with waves crashing",
+    "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg...",
+    "width": 480,
+    "height": 640,
+    "length": 81
   }
 }
 ```
+
+### Required Fields
+- **prompt** (string): Text description for the video generation
+- **image** (string): Base64-encoded input image (with or without data URI prefix)
+
+### Optional Fields
+- **width** (int): Video width in pixels (default: 480)
+- **height** (int): Video height in pixels (default: 640)
+- **length** (int): Number of frames to generate (default: 81)
+
+The handler will:
+1. Upload your image to ComfyUI
+2. Load the I2V workflow template
+3. Replace `{{ VIDEO_PROMPT }}` with your prompt
+4. Replace `{{ INPUT_IMAGE }}` with the uploaded filename
+5. Set the specified dimensions
+6. Queue the workflow for processing
 
 ## Custom Nodes Included
 
