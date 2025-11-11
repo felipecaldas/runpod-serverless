@@ -1,0 +1,176 @@
+# Custom ComfyUI RunPod serverless worker
+# Built from CUDA base to avoid compatibility issues with runpod/worker-comfyui:5.1.0-base
+# Features: shared models via /runpod-volume symlinks, enhanced handler, multi-stage caching
+
+# ---------------------------
+# Stage 1: Base CUDA + Python setup
+# ---------------------------
+FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04 AS base
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3.11-dev \
+    python3.11-venv \
+    python3-pip \
+    git \
+    wget \
+    curl \
+    build-essential \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    libgtk-3-0 \
+    ffmpeg \
+    libturbojpeg \
+    libtiff5 \
+    libpng16-16 \
+    libjpeg-turbo8 \
+    libopenjp2-7 \
+    libwebp7 \
+    libwebpmux3 \
+    libwebpdemux2 \
+    libopenexr25 \
+    libgstreamer1.0-0 \
+    libgstreamer-plugins-base1.0-0 \
+    libgstreamer-plugins-good1.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create Python virtual environment
+RUN python3.11 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Upgrade pip
+RUN pip install --upgrade pip setuptools wheel
+
+# Install PyTorch with CUDA support
+RUN pip install torch==2.3.1 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+# Tag the completed base image
+FROM base AS torch-base
+
+# ---------------------------
+# Stage 2: ComfyUI installation
+# ---------------------------
+FROM torch-base AS comfyui
+WORKDIR /comfyui
+
+# Clone ComfyUI
+RUN git clone https://github.com/comfyanonymous/ComfyUI.git . && \
+    git fetch --all --tags && \
+    git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
+
+# Install ComfyUI dependencies
+RUN pip install -r requirements.txt
+
+# Install additional dependencies for Wan models
+RUN pip install \
+    transformers \
+    accelerate \
+    safetensors \
+    diffusers \
+    opencv-python \
+    imageio \
+    imageio-ffmpeg \
+    einops \
+    omegaconf \
+    scikit-image \
+    pillow \
+    numpy \
+    scipy \
+    matplotlib \
+    tqdm \
+    psutil
+
+# ---------------------------
+# Stage 3: Custom nodes
+# ---------------------------
+FROM comfyui AS custom_nodes
+WORKDIR /comfyui
+
+# Install custom nodes using git clone (more reliable than comfy-node-install)
+RUN git clone https://github.com/city96/ComfyUI-GGUF.git /comfyui/custom_nodes/ComfyUI-GGUF && \
+    cd /comfyui/custom_nodes/ComfyUI-GGUF && git checkout main
+
+RUN git clone https://github.com/Fannovel16/ComfyUI-Frame-Interpolation.git /comfyui/custom_nodes/ComfyUI-Frame-Interpolation && \
+    cd /comfyui/custom_nodes/ComfyUI-Frame-Interpolation && git checkout main
+
+RUN git clone https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git /comfyui/custom_nodes/ComfyUI-VideoHelperSuite && \
+    cd /comfyui/custom_nodes/ComfyUI-VideoHelperSuite && git checkout main
+
+RUN git clone https://github.com/city96/ComfyUI_ExtraModels.git /comfyui/custom_nodes/ComfyUI_ExtraModels && \
+    cd /comfyui/custom_nodes/ComfyUI_ExtraModels && git checkout main
+
+RUN git clone https://github.com/SeanScripts/ComfyUI-Unload-Model.git /comfyui/custom_nodes/ComfyUI-Unload-Model && \
+    cd /comfyui/custom_nodes/ComfyUI-Unload-Model && git checkout main
+
+RUN git clone https://github.com/yolain/ComfyUI-Easy-Use.git /comfyui/custom_nodes/ComfyUI-Easy-Use && \
+    cd /comfyui/custom_nodes/ComfyUI-Easy-Use && git checkout main
+
+# RUN git clone https://github.com/kijai/ComfyUI-WanVideoWrapper.git /comfyui/custom_nodes/ComfyUI-WanVideoWrapper && \
+#     cd /comfyui/custom_nodes/ComfyUI-WanVideoWrapper && git checkout main
+
+# Install ComfyUI-Easy-Use dependencies
+RUN cd /comfyui/custom_nodes/ComfyUI-Easy-Use && \
+    if [ -f "install.sh" ]; then \
+      echo "Installing ComfyUI-Easy-Use dependencies..."; \
+      bash install.sh || echo "Warning: ComfyUI-Easy-Use install script failed, continuing..."; \
+    else \
+      echo "No install script found for ComfyUI-Easy-Use"; \
+    fi
+
+# ---------------------------
+# Stage 4: Final production image
+# ---------------------------
+FROM comfyui AS production
+
+# Copy custom nodes from previous stage
+COPY --from=custom_nodes /comfyui/custom_nodes /comfyui/custom_nodes
+
+# Set working directory
+WORKDIR /comfyui
+
+# Create directories for model symlinks
+RUN mkdir -p /comfyui/models/{checkpoints,clip,clip_vision,configs,controlnet,embeddings,loras,upscale_models,vae,unet,diffusion_models,text_encoders}
+
+# Copy application sources (handler, utilities, scripts)
+COPY src /src
+
+# Copy validation schemas
+COPY schemas /schemas
+
+# Copy ComfyUI workflows
+COPY workflows /workflows
+
+# Copy requirements for any additional dependencies
+COPY requirements.txt /src/requirements.txt
+
+# Install any additional requirements
+RUN pip install -r /src/requirements.txt
+
+# Make scripts executable
+RUN chmod +x /src/start.sh
+
+# Set environment variables for performance
+ENV PYTHONUNBUFFERED=true
+ENV CUDA_VISIBLE_DEVICES=0
+ENV TF_FORCE_GPU_ALLOW_GROWTH=true
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+ENV HF_HOME="/comfyui"
+ENV COMFY_LOG_LEVEL=INFO
+ENV PYTHONPATH=/comfyui
+
+
+EXPOSE 3000
+
+# Set default command
+CMD ["/src/start.sh"]

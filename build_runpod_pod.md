@@ -42,7 +42,7 @@ See `docker-image-optimization-journey.md` for the full story of how we got here
 docker run --rm -it `
   -e CUDA_VISIBLE_DEVICES="" `
   -p 8188:8188 `
-  fcaldas/tabario.com:1.0-wan22 `
+  fcaldas/tabario.com:1.1-wan22 `
   bash -lc "cd /comfyui && /opt/venv/bin/python main.py --listen 0.0.0.0 --port 8188 --cpu"
 ```
 
@@ -121,6 +121,16 @@ docker run --rm -it `
   -p 8188:8188 `
   fcaldas/tabario.com:1.0-wan22 `
   bash -lc "cd /comfyui && /opt/venv/bin/python main.py --listen 0.0.0.0 --port 8188"
+```
+
+### 3.3) Test with CPU Runpod Handler and Comfyui
+```powershell
+docker run --rm -it `
+  -p 3000:3000 `
+  -p 8188:8188 `
+  -e SERVE_API_LOCALLY=true `
+  -e FORCE_CPU=true `
+  fcaldas/tabario.com:1.0-wan22
 ```
 
 ### 3.3) Test serverless worker API

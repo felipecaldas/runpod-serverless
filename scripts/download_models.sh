@@ -98,24 +98,44 @@ download_i2v_wan22_models() {
     echo "Downloading models for workflow: i2v-wan22"
 
     echo "Downloading VAE models..."
-    download_with_retry "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors" \
+    download_with_retry "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_repackaged/resolve/main/vae/wan_2.2_vae.safetensors" \
+        "models/vae/wan_2.2_vae.safetensors"
+    
+    # Additional VAE model required by video_wan2_2_14B_i2v
+    download_with_retry "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors" \
         "models/vae/wan_2.1_vae.safetensors"
 
     echo "Downloading CLIP models..."
     download_with_retry "https://huggingface.co/city96/umt5-xxl-encoder-gguf/resolve/main/umt5-xxl-encoder-Q5_K_M.gguf" \
         "models/clip/umt5-xxl-encoder-Q5_K_M.gguf"
+    
+    # Additional text encoder required by video_wan2_2_14B_i2v
+    download_with_retry "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors" \
+        "models/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors"
 
     echo "Downloading UNet models..."
     download_with_retry "https://huggingface.co/QuantStack/Wan2.2-I2V-A14B-GGUF/resolve/main/HighNoise/Wan2.2-I2V-A14B-HighNoise-Q8_0.gguf" \
         "models/unet/Wan2.2-I2V-A14B-HighNoise-Q8_0.gguf"
     download_with_retry "https://huggingface.co/QuantStack/Wan2.2-I2V-A14B-GGUF/resolve/main/LowNoise/Wan2.2-I2V-A14B-LowNoise-Q8_0.gguf" \
         "models/unet/Wan2.2-I2V-A14B-LowNoise-Q8_0.gguf"
+    
+    # Additional UNet models required by video_wan2_2_14B_i2v
+    download_with_retry "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors" \
+        "models/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors"
+    download_with_retry "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors" \
+        "models/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors"
 
     echo "Downloading LoRA models..."
     download_with_retry "https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/LoRAs/Wan22-Lightning/Wan22_A14B_T2V_HIGH_Lightning_4steps_lora_250928_rank128_fp16.safetensors" \
         "models/loras/Wan22_A14B_T2V_HIGH_Lightning_4steps_lora_250928_rank128_fp16.safetensors"
     download_with_retry "https://huggingface.co/Kijai/WanVideo_comfy/resolve/main/LoRAs/Wan22-Lightning/Wan22_A14B_T2V_LOW_Lightning_4steps_lora_250928_rank64_fp16.safetensors" \
         "models/loras/Wan22_A14B_T2V_LOW_Lightning_4steps_lora_250928_rank64_fp16.safetensors"
+    
+    # Additional LoRA models required by video_wan2_2_14B_i2v
+    download_with_retry "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors" \
+        "models/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors"
+    download_with_retry "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors" \
+        "models/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors"
 
     echo "Downloading frame interpolation model..."
     download_with_retry "https://huggingface.co/wavespeed/misc/resolve/main/rife/rife47.pth" \

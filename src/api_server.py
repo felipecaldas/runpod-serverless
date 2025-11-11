@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 import requests
 import json
+import os
 import traceback
 import sys
 import threading
@@ -20,6 +21,30 @@ from enum import Enum
 app = FastAPI(title='RunPod Serverless Worker API')
 
 COMFY_API_BASE = "http://127.0.0.1:8188"
+
+WORKFLOW_TEMPLATES: Dict[str, str] = {
+    "video_wan2_2_14B_i2v": "video_wan2_2_14B_i2v.json",
+    "T2I_ChromaAnimaAIO": "T2I_ChromaAnimaAIO.json",
+    "qwen-image-fast-runpod": "qwen-image-fast-runpod.json",
+    "crayon-drawing": "crayon-drawing.json",
+    "I2V-Wan-2.2-Lightning-runpod": "I2V-Wan-2.2-Lightning-runpod.json"
+}
+
+
+def load_workflow_template(workflow_name: str) -> Dict[str, Any]:
+    """Load workflow template from local workflows directory."""
+    template_file = WORKFLOW_TEMPLATES.get(workflow_name)
+    if not template_file:
+        raise ValueError(f"Unknown workflow '{workflow_name}'")
+
+    template_path = os.path.join(os.path.dirname(__file__), "..", "workflows", template_file)
+    try:
+        with open(template_path, "r", encoding="utf-8") as workflow_file:
+            return json.load(workflow_file)
+    except FileNotFoundError as exc:
+        raise ValueError(f"Workflow template not found at {template_path}") from exc
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in workflow template: {exc}") from exc
 
 class JobStatus(Enum):
     QUEUED = "queued"
@@ -53,11 +78,16 @@ async def run_endpoint(request: Request):
             raise HTTPException(status_code=400, detail="'input' is required in request body")
         
         job_input = body.get('input')
-        if not isinstance(job_input, dict) or 'workflow' not in job_input:
-            raise HTTPException(status_code=400, detail="'workflow' is required in input")
+        if not isinstance(job_input, dict):
+            raise HTTPException(status_code=400, detail="'input' must be an object")
+
+        workflow_name = job_input.get('comfyui_workflow_name', 'video_wan2_2_14B_i2v')
+        try:
+            workflow = load_workflow_template(workflow_name)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
         
-        workflow = job_input.get('workflow')
-        print(f"Submitting workflow to ComfyUI: {json.dumps(workflow)[:200]}...")
+        print(f"Submitting workflow '{workflow_name}' to ComfyUI: {json.dumps(workflow)[:200]}...")
         
         # Forward to ComfyUI - wrap workflow in 'prompt' key as ComfyUI expects
         comfy_payload = {"prompt": workflow}
@@ -159,11 +189,16 @@ async def runsync_endpoint(request: Request):
             raise HTTPException(status_code=400, detail="'input' is required in request body")
         
         job_input = body.get('input')
-        if not isinstance(job_input, dict) or 'workflow' not in job_input:
-            raise HTTPException(status_code=400, detail="'workflow' is required in input")
-        
-        workflow = job_input.get('workflow')
-        print(f"Submitting workflow to ComfyUI (sync): {json.dumps(workflow)[:200]}...")
+        if not isinstance(job_input, dict):
+            raise HTTPException(status_code=400, detail="'input' must be an object")
+
+        workflow_name = job_input.get('comfyui_workflow_name', 'video_wan2_2_14B_i2v')
+        try:
+            workflow = load_workflow_template(workflow_name)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+        print(f"Submitting workflow '{workflow_name}' to ComfyUI (sync): {json.dumps(workflow)[:200]}...")
         
         # Forward to ComfyUI - wrap workflow in 'prompt' key as ComfyUI expects
         comfy_payload = {"prompt": workflow}

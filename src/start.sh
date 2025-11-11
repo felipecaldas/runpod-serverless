@@ -11,14 +11,21 @@ echo "Starting RunPod serverless worker (official base + optimizations)..."
 cd /comfyui
 
 # Setup symlinks to models from RunPod network volume
-echo "Setting up model symlinks from /runpod-volume..."
+echo "Setting up model symlinks..."
 
-VOLUME_MODELS="/runpod-volume/comfyui/models"
 LOCAL_MODELS="/comfyui/models"
-
 mkdir -p "$LOCAL_MODELS"
 
-if [ -d "$VOLUME_MODELS" ]; then
+# Check both possible volume locations
+if [ -d "/runpod-volume/comfyui/models" ]; then
+    VOLUME_MODELS="/runpod-volume/comfyui/models"
+elif [ -d "/workspace/comfyui/models" ]; then
+    VOLUME_MODELS="/workspace/comfyui/models"
+else
+    VOLUME_MODELS=""
+fi
+
+if [ -n "$VOLUME_MODELS" ] && [ -d "$VOLUME_MODELS" ]; then
     echo "Linking model subfolders from $VOLUME_MODELS into $LOCAL_MODELS"
     for sub in vae clip checkpoints unet loras upscale_models text_encoders diffusion_models; do
         src="$VOLUME_MODELS/$sub"
@@ -30,7 +37,7 @@ if [ -d "$VOLUME_MODELS" ]; then
         fi
     done
 else
-    echo "Warning: $VOLUME_MODELS not found. Proceeding without shared models."
+    echo "Warning: No compatible network volume found at /runpod-volume or /workspace"
 fi
 
 echo "Starting ComfyUI server..."
@@ -81,9 +88,9 @@ else
     # Verify ComfyUI is running
     echo "Checking ComfyUI health..."
     if python -c "import requests; requests.get('http://127.0.0.1:8188/system_stats', timeout=5)" 2>/dev/null; then
-        echo "✅ ComfyUI is ready and responding"
+        echo " ComfyUI is ready and responding"
     else
-        echo "❌ ComfyUI failed to start properly"
+        echo " ComfyUI failed to start properly"
         exit 1
     fi
     

@@ -1,4 +1,0 @@
-Pillow
-requests
-python-dotenv
-runpod

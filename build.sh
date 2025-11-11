@@ -7,9 +7,9 @@ set -e
 
 echo "Building RunPod serverless ComfyUI worker v3 (official base + optimizations)..."
 
-# Build arguments
+# Build arguments (simplified)
 IMAGE_NAME="fcaldas/tabario.com"
-IMAGE_TAG="1.0-wan22"
+IMAGE_TAG="1.1-wan22"
 DOCKERFILE="Dockerfile.runpod.serverless"
 
 echo "Building image: $IMAGE_NAME:$IMAGE_TAG"
@@ -21,18 +21,17 @@ echo "Custom nodes:  Installed via comfy-node-install"
 echo "Models:        Provided via RunPod network volume (symlinked at runtime)"
 echo "Handler:       Production-grade with validation"
 echo "Features:"
-echo "  ✅ Official RunPod compatibility"
-echo "  ✅ Optimized multi-stage builds"
-echo "  ✅ Shared models via network volume symlinks"
-echo "  ✅ Enhanced logging and monitoring"
-echo "  ✅ Resource monitoring"
-echo "  ✅ WebSocket-based workflow monitoring"
+echo "  Official RunPod compatibility"
+echo "  Optimized multi-stage builds"
+echo "  Shared models via network volume symlinks"
+echo "  Enhanced logging and monitoring"
+echo "  Resource monitoring"
+echo "  WebSocket-based workflow monitoring"
 
 # Build the Docker image
 docker build \
-    --platform linux/amd64 \
-    -f "$DOCKERFILE" \
-    -t "$IMAGE_NAME:$IMAGE_TAG" \
+    -t ${IMAGE_NAME}:${IMAGE_TAG} \
+    -f ${DOCKERFILE} \
     .
 
 echo ""
@@ -43,11 +42,11 @@ docker images | grep "$IMAGE_NAME" | grep "$IMAGE_TAG"
 
 echo ""
 echo "=== Advantages of v3 ==="
-echo "✅ Official RunPod base image - maximum compatibility"
-echo "✅ Uses comfy-node-install - proper custom node installation"
-echo "✅ Production-tested environment"
-echo "✅ Runtime model optimization"
-echo "✅ Enhanced handler with monitoring"
+echo " Official RunPod base image - maximum compatibility"
+echo " Uses comfy-node-install - proper custom node installation"
+echo " Production-tested environment"
+echo " Runtime model optimization"
+echo " Enhanced handler with monitoring"
 echo ""
 
 echo "=== Quick Test Commands ==="
