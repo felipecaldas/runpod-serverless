@@ -6,6 +6,7 @@ This provides FastAPI endpoints that forward requests to ComfyUI.
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 import requests
 import json
@@ -15,10 +16,46 @@ import sys
 import threading
 import time
 import uuid
-from typing import Dict, Any
 from enum import Enum
+from pathlib import Path
+from typing import Dict, Any
+
+import yaml
 
 app = FastAPI(title='RunPod Serverless Worker API')
+
+OPENAPI_SPEC_PATH = Path(__file__).resolve().parent.parent / "docs" / "openapi.yaml"
+
+
+def _load_openapi_schema() -> Dict[str, Any]:
+    """Load the custom OpenAPI schema from the docs directory."""
+
+    with OPENAPI_SPEC_PATH.open("r", encoding="utf-8") as spec_file:
+        return yaml.safe_load(spec_file)
+
+
+def custom_openapi() -> Dict[str, Any]:
+    """Override FastAPI's OpenAPI generator to serve the checked-in spec."""
+
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    try:
+        app.openapi_schema = _load_openapi_schema()
+    except FileNotFoundError:
+        app.openapi_schema = get_openapi(
+            title=app.title,
+            version="0.1.0",
+            description=app.description,
+            routes=app.routes,
+        )
+    except yaml.YAMLError as exc:
+        raise RuntimeError(f"Invalid OpenAPI specification at {OPENAPI_SPEC_PATH}: {exc}") from exc
+
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
 
 COMFY_API_BASE = "http://127.0.0.1:8188"
 
