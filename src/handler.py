@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import time
 import traceback
 from pathlib import Path
 from typing import Any, Dict
@@ -17,7 +18,12 @@ import torch
 from runpod.serverless.utils.rp_validator import validate
 
 from comfy_client import ComfyClient
-from config import APP_NAME, DISK_MIN_FREE_BYTES
+from config import (
+    APP_NAME,
+    COMFY_HISTORY_ATTEMPTS,
+    COMFY_HISTORY_DELAY_SECONDS,
+    DISK_MIN_FREE_BYTES,
+)
 from logging_utils import log_with_job, setup_logging
 from outputs import OutputProcessor
 from telemetry import get_container_disk_info, get_container_memory_info
@@ -126,6 +132,8 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
             else:
                 return result
 
+        result = _ensure_final_assets(result, prompt_id, client, job_id)
+
         outputs = result.get("outputs", {})
         if not outputs:
             log_with_job(logging.warning, f"No outputs found for prompt {prompt_id}", job_id)
@@ -146,6 +154,69 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
         log_with_job(logging.error, error_msg, job_id)
         log_with_job(logging.error, traceback.format_exc(), job_id)
         return {"error": error_msg}
+
+
+def _ensure_final_assets(
+    result: Dict[str, Any],
+    prompt_id: str,
+    client: ComfyClient,
+    job_id: str,
+) -> Dict[str, Any]:
+    """Poll ComfyUI history until workflow assets are finalized or retries are exhausted."""
+
+    if _has_final_assets(result):
+        return result
+
+    log_with_job(logging.info, "Waiting for workflow assets to finalize", job_id)
+    latest_result = result
+
+    for attempt in range(COMFY_HISTORY_ATTEMPTS):
+        time.sleep(COMFY_HISTORY_DELAY_SECONDS)
+        refreshed = client.fetch_history(prompt_id, job_id)
+        if refreshed is None:
+            continue
+
+        latest_result = refreshed
+        if _has_final_assets(refreshed):
+            log_with_job(
+                logging.info,
+                f"Workflow assets finalized after {attempt + 1} refresh attempt(s)",
+                job_id,
+            )
+            return refreshed
+
+    log_with_job(
+        logging.warning,
+        "Workflow assets did not finalize within the allotted retries; proceeding with available data",
+        job_id,
+    )
+    return latest_result
+
+
+def _has_final_assets(result: Dict[str, Any]) -> bool:
+    """Return True when the history payload contains at least one non-temporary asset."""
+
+    outputs = result.get("outputs")
+    if not isinstance(outputs, dict):
+        return False
+
+    for node_output in outputs.values():
+        if not isinstance(node_output, dict):
+            continue
+
+        for collection in ("images", "videos"):
+            entries = node_output.get(collection, [])
+            if not isinstance(entries, list):
+                continue
+
+            for asset_info in entries:
+                if not isinstance(asset_info, dict):
+                    continue
+
+                if asset_info.get("type", "output") != "temp":
+                    return True
+
+    return False
 
 
 def _check_resources(job_id: str) -> bool:
