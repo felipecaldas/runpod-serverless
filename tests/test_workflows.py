@@ -8,10 +8,25 @@ from workflows import create_unique_filename_prefix, set_workflow_dimensions, su
 
 def test_substitute_workflow_placeholders() -> None:
     template = {"1": {"prompt": "{{ VIDEO_PROMPT }}", "image": "{{ INPUT_IMAGE }}"}}
-    result = substitute_workflow_placeholders(template, "hello", "image.png")
+    result = substitute_workflow_placeholders(template, "hello", "image.png", 480, 640)
 
     assert result["1"]["prompt"] == "hello"
     assert result["1"]["image"] == "image.png"
+
+
+def test_substitute_workflow_placeholders_replaces_qwen_tokens() -> None:
+    template = {
+        "1": {
+            "prompt": "{{ IMAGE_PROMPT }}",
+            "width": "{{ IMAGE_WIDTH }}",
+            "height": "{{ IMAGE_HEIGHT }}",
+        }
+    }
+    result = substitute_workflow_placeholders(template, "hello", "image.png", 720, 1280)
+
+    assert result["1"]["prompt"] == "hello"
+    assert result["1"]["width"] == 720
+    assert result["1"]["height"] == 1280
 
 
 def test_set_workflow_dimensions_sets_values() -> None:

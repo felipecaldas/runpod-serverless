@@ -27,7 +27,7 @@ from config import (
 from logging_utils import log_with_job, setup_logging
 from outputs import OutputProcessor
 from telemetry import get_container_disk_info, get_container_memory_info
-from workflows import load_workflow_template, prepare_workflow, upload_input_image
+from workflows import load_workflow_template, prepare_workflow, upload_input_image, workflow_requires_input_image
 
 torch.backends.cuda.enable_flash_sdp(False)
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -42,8 +42,9 @@ INPUT_SCHEMA: Dict[str, Any] = {
     },
     "image": {
         "type": str,
-        "required": True,
-        "constraints": lambda image: isinstance(image, str) and len(image) > 0,
+        "required": False,
+        "default": "",
+        "constraints": lambda image: image in (None, "") or (isinstance(image, str) and len(image) > 0),
     },
     "width": {"type": int, "required": False, "default": 480},
     "height": {"type": int, "required": False, "default": 640},
@@ -81,7 +82,7 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
 
         job_input = validated_input["validated_input"]
         prompt = job_input["prompt"]
-        image_b64 = job_input["image"]
+        image_b64 = job_input.get("image")
         width = job_input.get("width", 480)
         height = job_input.get("height", 640)
         length = job_input.get("length", 81)
@@ -100,11 +101,16 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
         if not client.check_server():
             raise RuntimeError("ComfyUI server is not ready")
 
-        log_with_job(logging.info, "Uploading input image to ComfyUI", job_id)
-        uploaded_filename = upload_input_image(image_b64, job_id, width, height, client)
-
         log_with_job(logging.info, "Loading workflow template", job_id)
         workflow_template = load_workflow_template(workflow_name)
+
+        uploaded_filename = ""
+        if workflow_requires_input_image(workflow_template):
+            if not image_b64:
+                return {"error": "'image' is required for this workflow."}
+
+            log_with_job(logging.info, "Uploading input image to ComfyUI", job_id)
+            uploaded_filename = upload_input_image(image_b64, job_id, width, height, client)
         workflow = prepare_workflow(
             workflow_template,
             prompt,

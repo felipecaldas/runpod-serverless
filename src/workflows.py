@@ -22,6 +22,7 @@ WORKFLOW_TEMPLATES: Dict[str, str] = {
     "video_wan2_2_14B_i2v": "video_wan2_2_14B_i2v.json",
     "T2I_ChromaAnimaAIO": "T2I_ChromaAnimaAIO.json",
     "qwen-image-fast-runpod": "qwen-image-fast-runpod.json",
+    "image_qwen_t2i": "image_qwen_image_distill_official_comfyui.json",
     "crayon-drawing": "crayon-drawing.json",
     "I2V-Wan-2.2-Lightning-runpod": "I2V-Wan-2.2-Lightning-runpod.json",
 }
@@ -38,6 +39,19 @@ def load_workflow_template(workflow_name: str) -> Dict[str, Any]:
         raise FileNotFoundError(f"Workflow template not found at {template_path}") from exc
     except json.JSONDecodeError as exc:
         raise ValueError(f"Invalid JSON in workflow template: {exc}") from exc
+
+
+def workflow_requires_input_image(workflow: Dict[str, Any]) -> bool:
+    """Return True when the workflow template includes an input image placeholder."""
+
+    def _contains(value: Any) -> bool:
+        if isinstance(value, dict):
+            return any(_contains(item) for item in value.values())
+        if isinstance(value, list):
+            return any(_contains(item) for item in value)
+        return value == "{{ INPUT_IMAGE }}"
+
+    return _contains(workflow)
 
 
 def upload_input_image(
@@ -86,7 +100,7 @@ def prepare_workflow(
     job_id: str,
 ) -> Dict[str, Any]:
     """Prepare a workflow by injecting prompt, image, dimensions, and unique filenames."""
-    workflow = substitute_workflow_placeholders(workflow, prompt, image_filename)
+    workflow = substitute_workflow_placeholders(workflow, prompt, image_filename, width, height)
 
     try:
         set_workflow_dimensions(workflow, width, height, length)
@@ -97,12 +111,35 @@ def prepare_workflow(
     return workflow
 
 
-def substitute_workflow_placeholders(workflow: Dict[str, Any], prompt: str, image_filename: str) -> Dict[str, Any]:
+def substitute_workflow_placeholders(
+    workflow: Dict[str, Any],
+    prompt: str,
+    image_filename: str,
+    width: int,
+    height: int,
+) -> Dict[str, Any]:
     """Replace placeholder tokens within the workflow template."""
-    workflow_str = json.dumps(workflow)
-    workflow_str = workflow_str.replace("{{ VIDEO_PROMPT }}", prompt)
-    workflow_str = workflow_str.replace("{{ INPUT_IMAGE }}", image_filename)
-    return json.loads(workflow_str)
+
+    def _replace(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {key: _replace(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [_replace(item) for item in value]
+        if value == "{{ VIDEO_PROMPT }}":
+            return prompt
+        if value == "{{ POSITIVE_PROMPT }}":
+            return prompt
+        if value == "{{ IMAGE_PROMPT }}":
+            return prompt
+        if value == "{{ INPUT_IMAGE }}":
+            return image_filename
+        if value == "{{ IMAGE_WIDTH }}":
+            return width
+        if value == "{{ IMAGE_HEIGHT }}":
+            return height
+        return value
+
+    return _replace(workflow)
 
 
 def set_workflow_dimensions(workflow: Dict[str, Any], width: int, height: int, length: int) -> None:
@@ -115,7 +152,16 @@ def set_workflow_dimensions(workflow: Dict[str, Any], width: int, height: int, l
             inputs["length"] = length
             log_with_job(logging.info, f"Set workflow dimensions: {width}x{height}, length={length}", None)
             return
-    raise ValueError("WanImageToVideo node not found in workflow template")
+
+    for node in workflow.values():
+        if isinstance(node, dict) and node.get("class_type") == "EmptySD3LatentImage":
+            inputs = node.setdefault("inputs", {})
+            inputs["width"] = width
+            inputs["height"] = height
+            log_with_job(logging.info, f"Set workflow dimensions: {width}x{height}", None)
+            return
+
+    raise ValueError("No supported dimension nodes found in workflow template")
 
 
 def create_unique_filename_prefix(workflow: Dict[str, Any]) -> None:

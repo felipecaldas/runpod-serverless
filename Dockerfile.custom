@@ -67,7 +67,8 @@ WORKDIR /comfyui
 # Clone ComfyUI
 RUN git clone https://github.com/comfyanonymous/ComfyUI.git . && \
     git fetch --all --tags && \
-    git checkout $(git describe --tags $(git rev-list --tags --max-count=1))
+    git checkout $(git describe --tags $(git rev-list --tags --max-count=1)) && \
+    rm -rf .git
 
 # Install ComfyUI dependencies
 RUN pip install -r requirements.txt
@@ -98,35 +99,29 @@ FROM comfyui AS custom_nodes
 WORKDIR /comfyui
 
 # Install custom nodes using git clone (more reliable than comfy-node-install)
-RUN git clone https://github.com/city96/ComfyUI-GGUF.git /comfyui/custom_nodes/ComfyUI-GGUF && \
-    cd /comfyui/custom_nodes/ComfyUI-GGUF && git checkout main
-
-RUN git clone https://github.com/Fannovel16/ComfyUI-Frame-Interpolation.git /comfyui/custom_nodes/ComfyUI-Frame-Interpolation && \
-    cd /comfyui/custom_nodes/ComfyUI-Frame-Interpolation && git checkout main
-
-RUN git clone https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git /comfyui/custom_nodes/ComfyUI-VideoHelperSuite && \
-    cd /comfyui/custom_nodes/ComfyUI-VideoHelperSuite && git checkout main
-
-RUN git clone https://github.com/city96/ComfyUI_ExtraModels.git /comfyui/custom_nodes/ComfyUI_ExtraModels && \
-    cd /comfyui/custom_nodes/ComfyUI_ExtraModels && git checkout main
-
-RUN git clone https://github.com/SeanScripts/ComfyUI-Unload-Model.git /comfyui/custom_nodes/ComfyUI-Unload-Model && \
-    cd /comfyui/custom_nodes/ComfyUI-Unload-Model && git checkout main
-
-RUN git clone https://github.com/yolain/ComfyUI-Easy-Use.git /comfyui/custom_nodes/ComfyUI-Easy-Use && \
-    cd /comfyui/custom_nodes/ComfyUI-Easy-Use && git checkout main
-
-# RUN git clone https://github.com/kijai/ComfyUI-WanVideoWrapper.git /comfyui/custom_nodes/ComfyUI-WanVideoWrapper && \
-#     cd /comfyui/custom_nodes/ComfyUI-WanVideoWrapper && git checkout main
-
-# Install ComfyUI-Easy-Use dependencies
-RUN cd /comfyui/custom_nodes/ComfyUI-Easy-Use && \
+RUN git clone --depth 1 https://github.com/city96/ComfyUI-GGUF.git /comfyui/custom_nodes/ComfyUI-GGUF && \
+    git clone --depth 1 https://github.com/Fannovel16/ComfyUI-Frame-Interpolation.git /comfyui/custom_nodes/ComfyUI-Frame-Interpolation && \
+    git clone --depth 1 https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git /comfyui/custom_nodes/ComfyUI-VideoHelperSuite && \
+    git clone --depth 1 https://github.com/city96/ComfyUI_ExtraModels.git /comfyui/custom_nodes/ComfyUI_ExtraModels && \
+    git clone --depth 1 https://github.com/SeanScripts/ComfyUI-Unload-Model.git /comfyui/custom_nodes/ComfyUI-Unload-Model && \
+    git clone --depth 1 https://github.com/yolain/ComfyUI-Easy-Use.git /comfyui/custom_nodes/ComfyUI-Easy-Use && \
+    git clone --depth 1 https://github.com/rgthree/rgthree-comfy.git /comfyui/custom_nodes/rgthree-comfy && \
+    git clone --depth 1 https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler.git /comfyui/custom_nodes/ComfyUI-SeedVR2_VideoUpscaler && \
+    git clone --depth 1 https://github.com/chrisgoringe/cg-use-everywhere.git /comfyui/custom_nodes/cg-use-everywhere && \
+    cd /comfyui/custom_nodes/ComfyUI-Easy-Use && \
     if [ -f "install.sh" ]; then \
       echo "Installing ComfyUI-Easy-Use dependencies..."; \
       bash install.sh || echo "Warning: ComfyUI-Easy-Use install script failed, continuing..."; \
     else \
       echo "No install script found for ComfyUI-Easy-Use"; \
-    fi
+    fi && \
+    cd /comfyui/custom_nodes/rgthree-comfy && \
+    if [ -f "requirements.txt" ]; then pip install -r requirements.txt; fi && \
+    cd /comfyui/custom_nodes/ComfyUI-SeedVR2_VideoUpscaler && \
+    if [ -f "requirements.txt" ]; then pip install -r requirements.txt; fi && \
+    cd /comfyui/custom_nodes/cg-use-everywhere && \
+    if [ -f "requirements.txt" ]; then pip install -r requirements.txt; fi && \
+    find /comfyui/custom_nodes -type d -name .git -prune -exec rm -rf '{}' +
 
 # ---------------------------
 # Stage 4: Final production image
@@ -140,7 +135,18 @@ COPY --from=custom_nodes /comfyui/custom_nodes /comfyui/custom_nodes
 WORKDIR /comfyui
 
 # Create directories for model symlinks
-RUN mkdir -p /comfyui/models/{checkpoints,clip,clip_vision,configs,controlnet,embeddings,loras,upscale_models,vae,unet,diffusion_models,text_encoders}
+RUN mkdir -p /comfyui/models/checkpoints \
+    /comfyui/models/clip \
+    /comfyui/models/clip_vision \
+    /comfyui/models/configs \
+    /comfyui/models/controlnet \
+    /comfyui/models/embeddings \
+    /comfyui/models/loras \
+    /comfyui/models/upscale_models \
+    /comfyui/models/vae \
+    /comfyui/models/unet \
+    /comfyui/models/diffusion_models \
+    /comfyui/models/text_encoders
 
 # Copy application sources (handler, utilities, scripts)
 COPY src /src
