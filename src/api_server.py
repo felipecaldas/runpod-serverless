@@ -64,6 +64,7 @@ WORKFLOW_TEMPLATES: Dict[str, str] = {
     "T2I_ChromaAnimaAIO": "T2I_ChromaAnimaAIO.json",
     "qwen-image-fast-runpod": "qwen-image-fast-runpod.json",
     "image_qwen_t2i": "image_qwen_image_distill_official_comfyui.json",
+    "image_disneyizt_t2i": "disneyizt-imagez-t2v.json",
     "crayon-drawing": "crayon-drawing.json",
     "I2V-Wan-2.2-Lightning-runpod": "I2V-Wan-2.2-Lightning-runpod.json"
 }

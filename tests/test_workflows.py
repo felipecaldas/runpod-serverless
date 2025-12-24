@@ -3,7 +3,12 @@ from __future__ import annotations
 
 import json
 
-from workflows import create_unique_filename_prefix, set_workflow_dimensions, substitute_workflow_placeholders
+from workflows import (
+    create_unique_filename_prefix,
+    load_workflow_template,
+    set_workflow_dimensions,
+    substitute_workflow_placeholders,
+)
 
 
 def test_substitute_workflow_placeholders() -> None:
@@ -53,3 +58,14 @@ def test_create_unique_filename_prefix_generates_uuid() -> None:
     prefix = template["1"]["inputs"]["filename_prefix"]
     assert isinstance(prefix, str)
     assert len(prefix) > 0
+
+
+def test_load_workflow_template_disneyizt_t2i_substitutes_placeholders() -> None:
+    workflow = load_workflow_template("image_disneyizt_t2i")
+    rendered = substitute_workflow_placeholders(workflow, "hello", "", 512, 768)
+
+    payload = json.dumps(rendered)
+    assert "{{ POSITIVE_PROMPT }}" not in payload
+    assert "{{ IMAGE_WIDTH }}" not in payload
+    assert "{{ IMAGE_HEIGHT }}" not in payload
+    assert "hello" in payload

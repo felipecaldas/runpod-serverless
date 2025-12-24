@@ -30,7 +30,7 @@ cd y:\projects\runpod-serverless
 
 docker build `
   -f .\Dockerfile.runpod.serverless `
-  -t fcaldas/tabario.com:1.0-wan22 `
+  -t fcaldas/tabario.com:1.3 `
   .
 ```
 
@@ -42,7 +42,7 @@ docker run --rm -it `
   -e SERVE_API_LOCALLY=true `
   -p 3000:3000 `
   -v "${PWD}\test_input.json:/workspace/test_input.json" `
-  fcaldas/tabario.com:1.0-wan22
+  fcaldas/tabario.com:1.3
 ```
 
 The API will be available at `http://localhost:3000` with endpoints:
@@ -54,14 +54,14 @@ The API will be available at `http://localhost:3000` with endpoints:
 
 ```powershell
 docker login
-docker push fcaldas/tabario.com:1.0-wan22
+docker push fcaldas/tabario.com:1.3
 ```
 
 ### 4. Deploy to RunPod
 
 1. Go to RunPod Console → Serverless → Templates
 2. Create new template with:
-   - **Container Image**: `fcaldas/tabario.com:1.0-wan22`
+   - **Container Image**: `fcaldas/tabario.com:1.3`
    - **Container Disk**: 100 GB
    - **GPU**: 16-24 GB VRAM recommended
    - **Environment Variables**:
@@ -142,7 +142,11 @@ BUCKET_NAME=your_bucket_name
 
 ## Input Format
 
-The handler uses a template-based approach for the I2V Wan 2.2 workflow. Send a simple JSON payload:
+The handler supports multiple ComfyUI workflow templates via the `comfyui_workflow_name` input.
+
+### Workflow: Wan 2.2 Image-to-Video (I2V)
+
+Use `comfyui_workflow_name: "video_wan2_2_14B_i2v"` (default). This workflow requires an input image and uses `width`, `height`, and `length`.
 
 ```json
 {
@@ -151,27 +155,49 @@ The handler uses a template-based approach for the I2V Wan 2.2 workflow. Send a 
     "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg...",
     "width": 480,
     "height": 640,
-    "length": 81
+    "length": 81,
+    "comfyui_workflow_name": "video_wan2_2_14B_i2v"
+  }
+}
+```
+
+### Workflow: Qwen Text-to-Image (T2I)
+
+Use `comfyui_workflow_name: "image_qwen_t2i"`. This workflow does **not** require `image`. The handler injects:
+
+- `prompt` into `{{ IMAGE_PROMPT }}`
+- `width` into `{{ IMAGE_WIDTH }}`
+- `height` into `{{ IMAGE_HEIGHT }}`
+
+as defined in `workflows/image_qwen_image_distill_official_comfyui.json` (notably the `EmptySD3LatentImage` node).
+
+```json
+{
+  "input": {
+    "prompt": "Slow cinematic push-in through the forest, 4K",
+    "width": 720,
+    "height": 1280,
+    "comfyui_workflow_name": "image_qwen_t2i"
   }
 }
 ```
 
 ### Required Fields
-- **prompt** (string): Text description for the video generation
-- **image** (string): Base64-encoded input image (with or without data URI prefix)
+- **prompt** (string): Text prompt used by the selected workflow
 
 ### Optional Fields
-- **width** (int): Video width in pixels (default: 480)
-- **height** (int): Video height in pixels (default: 640)
-- **length** (int): Number of frames to generate (default: 81)
+- **image** (string): Base64-encoded input image (with or without data URI prefix). Required only for workflows that include `{{ INPUT_IMAGE }}` (e.g. Wan 2.2 I2V).
+- **width** (int): Output width in pixels (default: 480)
+- **height** (int): Output height in pixels (default: 640)
+- **length** (int): Number of frames to generate (default: 81). Used by video workflows.
+- **comfyui_workflow_name** (string): Workflow template key (default: `video_wan2_2_14B_i2v`). For Qwen T2I use `image_qwen_t2i`.
 
 The handler will:
-1. Upload your image to ComfyUI
-2. Load the I2V workflow template
-3. Replace `{{ VIDEO_PROMPT }}` with your prompt
-4. Replace `{{ INPUT_IMAGE }}` with the uploaded filename
-5. Set the specified dimensions
-6. Queue the workflow for processing
+1. Load the selected workflow template (`comfyui_workflow_name`)
+2. If the workflow contains `{{ INPUT_IMAGE }}`, upload the provided `image` to ComfyUI and inject the uploaded filename
+3. Inject the prompt into the appropriate placeholder (e.g. `{{ VIDEO_PROMPT }}`, `{{ POSITIVE_PROMPT }}`, or `{{ IMAGE_PROMPT }}` depending on the workflow)
+4. Inject `width`/`height` (and `length` for video workflows) into the workflow
+5. Queue the workflow for processing
 
 ## Custom Nodes Included
 
@@ -254,6 +280,7 @@ runpod-serverless/
 ├── Dockerfile.runpod.serverless # Docker build configuration
 ├── requirements.txt            # Python dependencies
 ├── test_input.json            # Example workflow for testing
+├── save_base64_image.py        # Helper: decode base64 output image from JSON and save locally
 └── README.md                  # This file
 ```
 
