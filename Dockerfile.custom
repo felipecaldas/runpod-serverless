@@ -126,13 +126,13 @@ RUN git clone --depth 1 https://github.com/city96/ComfyUI-GGUF.git /comfyui/cust
 # ---------------------------
 # Stage 4: Final production image
 # ---------------------------
-FROM comfyui AS production
-
-# Copy custom nodes from previous stage
-COPY --from=custom_nodes /comfyui/custom_nodes /comfyui/custom_nodes
+FROM custom_nodes AS production
 
 # Set working directory
 WORKDIR /comfyui
+
+# Ensure runtime dependency for ComfyUI-SeedVR2_VideoUpscaler is installed
+RUN pip install rotary-embedding-torch
 
 # Create directories for model symlinks
 RUN mkdir -p /comfyui/models/checkpoints \

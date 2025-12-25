@@ -51,7 +51,7 @@ docker images "$IMAGE_NAME:$IMAGE_TAG"
 
 echo ""
 echo "🧪 To test locally:"
-echo "docker run --rm -p 8188:8188 -v /path/to/models:/runpod-volume/comfyui/models $IMAGE_NAME:$IMAGE_TAG"
+echo "docker run --rm -p 8188:8188 -e FORCE_CPU=true -e SERVE_API_LOCALLY=true -v /path/to/models:/runpod-volume/comfyui/models $IMAGE_NAME:$IMAGE_TAG"
 
 echo ""
 echo "🚀 To push to registry:"

@@ -7,7 +7,7 @@ This provides FastAPI endpoints that forward requests to ComfyUI.
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 import requests
 import json
 import os
@@ -59,6 +59,8 @@ app.openapi = custom_openapi
 
 COMFY_API_BASE = "http://127.0.0.1:8188"
 
+WORKFLOW_TEMPLATES_DOC_PATH = Path(__file__).resolve().parent.parent / "docs" / "workflow-templates.md"
+
 WORKFLOW_TEMPLATES: Dict[str, str] = {
     "video_wan2_2_14B_i2v": "video_wan2_2_14B_i2v.json",
     "T2I_ChromaAnimaAIO": "T2I_ChromaAnimaAIO.json",
@@ -101,6 +103,9 @@ async def run_endpoint(request: Request):
     """
     Async job submission endpoint.
     Accepts a workflow and submits it to ComfyUI.
+
+    Supported `input.comfyui_workflow_name` values:
+    - GET /docs/workflow-templates
     """
     try:
         # Parse request body
@@ -205,6 +210,19 @@ async def run_endpoint(request: Request):
         print(f"ERROR: Unhandled exception in /run endpoint:", file=sys.stderr)
         print(error_trace, file=sys.stderr)
         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+
+
+@app.get('/docs/workflow-templates')
+async def workflow_templates_docs_endpoint():
+    """Serve the workflow template mapping documentation."""
+
+    try:
+        return PlainTextResponse(
+            WORKFLOW_TEMPLATES_DOC_PATH.read_text(encoding="utf-8"),
+            media_type="text/markdown",
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="workflow-templates.md not found") from exc
 
 
 @app.post('/runsync')

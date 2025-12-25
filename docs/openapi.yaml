@@ -16,7 +16,8 @@ paths:
       description: >-
         Wraps a workflow template and forwards it to the ComfyUI API. Returns a
         generated job identifier that can be polled via the `/status/{job_id}`
-        endpoint.
+        endpoint. Supported `input.comfyui_workflow_name` values are documented
+        at `GET /docs/workflow-templates`.
       requestBody:
         required: true
         content:
