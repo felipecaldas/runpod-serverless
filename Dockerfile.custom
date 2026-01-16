@@ -176,7 +176,5 @@ ENV COMFY_LOG_LEVEL=INFO
 ENV PYTHONPATH=/comfyui
 
 
-EXPOSE 3000
-
 # Set default command
 CMD ["/src/start.sh"]

@@ -3,35 +3,86 @@ info:
   title: RunPod ComfyUI Worker API
   version: 0.1.0
   description: >-
-    Reference OpenAPI definition for the local FastAPI wrapper around the RunPod
-    ComfyUI worker. Use this file with Swagger UI or any OpenAPI viewer to
-    inspect request and response payloads.
+    Reference OpenAPI definition for the RunPod serverless ComfyUI worker.
+    Use this file with Swagger UI or any OpenAPI viewer to inspect request and
+    response payloads.
 servers:
-  - url: http://localhost:3000
-    description: Local development server
+  - url: https://api.runpod.ai/v2/{endpoint_id}
+    description: RunPod serverless endpoint base URL
+    variables:
+      endpoint_id:
+        default: YOUR_ENDPOINT_ID
 paths:
   /run:
     post:
       summary: Submit an asynchronous ComfyUI workflow
-      description: >-
-        Wraps a workflow template and forwards it to the ComfyUI API. Returns a
-        generated job identifier that can be polled via the `/status/{job_id}`
-        endpoint. Supported `input.comfyui_workflow_name` values are documented
-        at `GET /docs/workflow-templates`.
+      description: |-
+        Wraps a workflow template and forwards it to the ComfyUI API.
+
+        ## Request body
+        Send a JSON payload with a top-level `input` object:
+
+        ```json
+        {
+          "input": {
+            "prompt": "...",
+            "image": "...",
+            "width": 480,
+            "height": 640,
+            "length": 81,
+            "comfyui_workflow_name": "video_wan2_2_14B_i2v",
+            "comfy_org_api_key": "..."
+          }
+        }
+        ```
+
+        - `input.prompt` is required.
+        - `input.image` is optional and is used by image-to-video templates.
+          The worker accepts a plain base64 string or a data URI such as
+          `data:image/png;base64,<BASE64...>`.
+        - `input.comfyui_workflow_name` selects the workflow template to submit.
+          If omitted, it defaults to `video_wan2_2_14B_i2v`.
+          To run a text-to-image workflow you must set `comfyui_workflow_name` to a
+          supported text-to-image template.
+
+        ## Supported `comfyui_workflow_name` values
+        The available workflow templates are:
+
+        | comfyui_workflow_name | Workflow JSON file |
+        | --- | --- |
+        | `video_wan2_2_14B_i2v` | `workflows/video_wan2_2_14B_i2v.json` |
+        | `T2I_ChromaAnimaAIO` | `workflows/T2I_ChromaAnimaAIO.json` |
+        | `qwen-image-fast-runpod` | `workflows/qwen-image-fast-runpod.json` |
+        | `image_qwen_t2i` | `workflows/image_qwen_image_distill_official_comfyui.json` |
+        | `image_disneyizt_t2i` | `workflows/disneyizt-imagez-t2v.json` |
+        | `crayon-drawing` | `workflows/crayon-drawing.json` |
+        | `I2V-Wan-2.2-Lightning-runpod` | `workflows/I2V-Wan-2.2-Lightning-runpod.json` |
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/RunRequest'
-            example:
-              input:
-                prompt: "A cinematic slow zoom across a neon city"
-                image: "iVBORw0KGgoAAAANSUhEUg..."
-                width: 480
-                height: 640
-                length: 81
-                comfyui_workflow_name: "video_wan2_2_14B_i2v"
+            examples:
+              text_to_image:
+                summary: Text-to-image generation
+                value:
+                  input:
+                    prompt: "<PROMPT_TEXT>"
+                    width: 720
+                    height: 1024
+                    comfyui_workflow_name: "image_disneyizt_t2i"
+                    comfy_org_api_key: "<COMFY_ORG_API_KEY>"
+              image_to_video:
+                summary: Image-to-video generation (defaults to video_wan2_2_14B_i2v)
+                value:
+                  input:
+                    prompt: "<VIDEO_PROMPT_TEXT>"
+                    image: "data:image/png;base64,<BASE64...>"
+                    width: 480
+                    height: 640
+                    length: 81
+                    comfy_org_api_key: "<COMFY_ORG_API_KEY>"
       responses:
         '200':
           description: Job accepted and queued for processing.
@@ -112,17 +163,21 @@ components:
         input:
           type: object
           description: >-
-            RunPod job payload that the worker forwards to ComfyUI. Fields differ
-            per workflow; the listed attributes are used by the video
-            `video_wan2_2_14B_i2v` template.
+            RunPod job payload that the worker uses to populate and submit the
+            selected ComfyUI workflow template.
+          required:
+            - prompt
           properties:
             prompt:
               type: string
               description: Natural language description that guides the workflow.
             image:
               type: string
-              format: byte
-              description: Base64-encoded input image (PNG or JPEG recommended).
+              description: >-
+                Optional base64-encoded input image.
+
+                May be either a plain base64 string, or a data URI such as
+                `data:image/png;base64,<BASE64...>`.
             width:
               type: integer
               minimum: 64
@@ -142,6 +197,14 @@ components:
               type: string
               default: video_wan2_2_14B_i2v
               description: Identifier of the workflow template to load.
+              enum:
+                - video_wan2_2_14B_i2v
+                - T2I_ChromaAnimaAIO
+                - qwen-image-fast-runpod
+                - image_qwen_t2i
+                - image_disneyizt_t2i
+                - crayon-drawing
+                - I2V-Wan-2.2-Lightning-runpod
             comfy_org_api_key:
               type: string
               nullable: true

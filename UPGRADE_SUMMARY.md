@@ -119,9 +119,6 @@ chmod +x build_optimized.sh
 ```bash
 # Test ComfyUI directly
 docker run --rm -it -p 8188:8188 fcaldas/tabario.com:2.0-optimized-v2
-
-# Test with API server (if needed)
-docker run --rm -it -e SERVE_API_LOCALLY=true -p 3000:3000 fcaldas/tabario.com:2.0-optimized-v2
 ```
 
 #### Deploy

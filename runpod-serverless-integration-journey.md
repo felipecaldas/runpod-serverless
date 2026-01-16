@@ -273,24 +273,15 @@ This wiring is crucial: without it, the container can’t act as a RunPod server
 
 ### Putting It Together with `start.sh`
 
-`start.sh` orchestrates the runtime for both local testing and production:
+`start.sh` orchestrates the production runtime:
 
 - **Model symlinks**: as described earlier, it wires the network volume into `/comfyui/models`.
-- **Modes**:
-  - Local API mode (`SERVE_API_LOCALLY=true`):
-    - Start ComfyUI.
-    - Wait for it to be ready.
-    - Start the local FastAPI `api_server.py` on port 3000, exposing `/run`, `/runsync`, and `/health` for development.
-  - Production RunPod mode (default):
-    - Start ComfyUI.
-    - Wait ~45 seconds.
-    - Verify health via `/system_stats`.
-    - Start `handler.py`, which in turn registers the handler with `runpod.serverless.start`.
+`start.sh` performs these steps:
 
-This separation allows:
-
-- Fast local iteration using `api_server.py` and a checked-in OpenAPI spec.
-- Clean serverless behavior in production, where RunPod calls the handler directly.
+- Start ComfyUI.
+- Wait ~45 seconds.
+- Verify health via `/system_stats`.
+- Start `handler.py`, which in turn registers the handler with `runpod.serverless.start`.
 
 ---
 
@@ -338,4 +329,4 @@ Together, these changes transformed a local ComfyUI environment plus a large opt
    - Telemetry, structured logging, and careful error handling in the handler and client code were essential to diagnosing resource issues and node failures.
 
 5. **Local development and production require different entrypoints**
-   - Maintaining both `api_server.py` (for local FastAPI testing) and `handler.py` (for RunPod) kept development fast while aligning with RunPod’s production model.
+   - The worker is designed to run under RunPod’s serverless model, where RunPod calls `handler.py` directly.

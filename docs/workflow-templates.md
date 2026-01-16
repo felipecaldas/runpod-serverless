@@ -1,7 +1,5 @@
 # Workflow templates
 
-This project exposes a local FastAPI wrapper (`src/api_server.py`) that submits pre-defined ComfyUI workflow templates to the ComfyUI server.
-
 The workflow template is selected via the request field `input.comfyui_workflow_name`.
 
 ## Supported `comfyui_workflow_name` values
@@ -15,9 +13,3 @@ The workflow template is selected via the request field `input.comfyui_workflow_
 | `image_disneyizt_t2i` | `workflows/disneyizt-imagez-t2v.json` |
 | `crayon-drawing` | `workflows/crayon-drawing.json` |
 | `I2V-Wan-2.2-Lightning-runpod` | `workflows/I2V-Wan-2.2-Lightning-runpod.json` |
-
-## API discovery
-
-The `/run` endpoint documentation links to a local docs route:
-
-- `GET /docs/workflow-templates`

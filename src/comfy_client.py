@@ -147,13 +147,15 @@ class ComfyClient:
             }
         return history
 
-    def _handle_websocket_message(self, data: Dict[str, Any], prompt_id: str, job_id: str) -> bool:
+    def _handle_websocket_message(
+        self, data: Dict[str, Any], prompt_id: str, job_id: str
+    ) -> bool | Dict[str, str]:
         message_type = data.get("type")
         content = data.get("data", {})
 
         if message_type == "executing" and content.get("prompt_id") == prompt_id:
             node = content.get("node")
-            if not node:
+            if node is None:
                 log_with_job(logging.info, f"Workflow completed for prompt: {prompt_id}", job_id)
                 return True
             log_with_job(logging.debug, f"Executing node: {node}", job_id)

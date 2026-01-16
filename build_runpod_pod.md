@@ -60,18 +60,6 @@ docker run --rm -it `
 
 Validate in http://localhost:8188. If GPU is not detected, install latest NVIDIA driver and enable GPU in Docker Desktop (WSL2).
 
-### 2.3) Optional: Test the serverless worker locally
-
-```powershell
-docker run --rm -it `
-  -e SERVE_API_LOCALLY=true `
-  -p 3000:3000 `
-  -v C:\path\to\test_input.json:/workspace/test_input.json `
-  fcaldas/tabario.com:1.0-wan22
-```
-
-This serves the worker API locally on port 3000 and consumes `/workspace/test_input.json` if present.
-
 - Verify custom nodes were installed:
 
 ```powershell
@@ -126,19 +114,8 @@ docker run --rm -it `
 ### 3.3) Test with CPU Runpod Handler and Comfyui
 ```powershell
 docker run --rm -it `
-  -p 3000:3000 `
   -p 8188:8188 `
-  -e SERVE_API_LOCALLY=true `
   -e FORCE_CPU=true `
-  fcaldas/tabario.com:1.0-wan22
-```
-
-### 3.3) Test serverless worker API
-```powershell
-docker run --rm -it `
-  -e SERVE_API_LOCALLY=true `
-  -p 3000:3000 `
-  -v C:\path\to\test_input.json:/workspace/test_input.json `
   fcaldas/tabario.com:1.0-wan22
 ```
 

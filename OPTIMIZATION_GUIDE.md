@@ -107,10 +107,10 @@ chmod +x build_optimized.sh
 ### Test Locally
 ```bash
 # Test with model downloads (first run will be slower)
-docker run --rm -it -p 3000:3000 -p 8188:8188 fcaldas/tabario.com:2.0-optimized
+docker run --rm -it -p 8188:8188 fcaldas/tabario.com:2.0-optimized
 
 # Test with models already cached (subsequent runs faster)
-docker run --rm -it -p 3000:3000 -p 8188:8188 fcaldas/tabario.com:2.0-optimized
+docker run --rm -it -p 8188:8188 fcaldas/tabario.com:2.0-optimized
 ```
 
 ### Deploy to RunPod
@@ -148,7 +148,6 @@ runpod-serverless/
 ├── Dockerfile.runpod.serverless.v2       # Optimized (5GB)
 ├── src/
 │   ├── handler.py              # Enhanced RunPod handler
-│   ├── api_server.py          # Local API server
 │   └── start.sh                # Production startup script
 ├── scripts/
 │   └── download_models.sh                # Runtime model download script

@@ -15,22 +15,7 @@ docker build --platform linux/amd64 -f Dockerfile.runpod.serverless -t runpod-co
 docker run --rm -e FORCE_CPU=true -e RUN_CONTAINER_TESTS=true runpod-comfyui-serverless:1.0
 ```
 
-### Option 2: Test Local API
-```powershell
-# Start the API locally for testing (CPU mode)
-docker run --rm -it -e FORCE_CPU=true -e SERVE_API_LOCALLY=true -p 3000:3000 runpod-comfyui-serverless:1.0
-```
-
-Then test the endpoints:
-```powershell
-# Health check
-curl http://localhost:3000/health
-
-# Test workflow (sync)
-curl -X POST -H "Content-Type: application/json" -d @test_input.json http://localhost:3000/runsync
-```
-
-### Option 3: Interactive Shell
+### Option 2: Interactive Shell
 ```powershell
 # Get a shell inside the container for debugging
 docker run --rm -it runpod-comfyui-serverless:1.0 bash

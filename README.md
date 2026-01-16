@@ -34,30 +34,14 @@ docker build `
   .
 ```
 
-### 2. Test Locally (Optional)
-
-```powershell
-# Test with CPU only
-docker run --rm -it `
-  -e SERVE_API_LOCALLY=true `
-  -p 3000:3000 `
-  -v "${PWD}\test_input.json:/workspace/test_input.json" `
-  fcaldas/tabario.com:1.3
-```
-
-The API will be available at `http://localhost:3000` with endpoints:
-- `POST /run` - Asynchronous job submission
-- `POST /runsync` - Synchronous job submission  
-- `GET /health` - Health check
-
-### 3. Push to Docker Registry
+### 2. Push to Docker Registry
 
 ```powershell
 docker login
 docker push fcaldas/tabario.com:1.3
 ```
 
-### 4. Deploy to RunPod
+### 3. Deploy to RunPod
 
 1. Go to RunPod Console → Serverless → Templates
 2. Create new template with:
@@ -123,7 +107,6 @@ curl -X POST \
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `COMFY_HOST` | `127.0.0.1:8188` | ComfyUI server address |
-| `SERVE_API_LOCALLY` | `false` | Enable local API testing mode |
 | `COMFY_LOG_LEVEL` | `DEBUG` | ComfyUI logging level |
 | `BUCKET_ENDPOINT_URL` | - | S3 endpoint for image uploads |
 | `CIVITAI_API_KEY` | - | Required to download Civitai-hosted models (e.g., `t2i-chroma-anime`) |
@@ -218,15 +201,6 @@ The handler will:
 - **Upscalers**: RealESRGAN_x2plus.pth
 - **Frame Interpolation**: rife47.pth
 
-## Development
-
-### Local Testing
-
-1. Build the image
-2. Run with `SERVE_API_LOCALLY=true`
-3. Test endpoints at `http://localhost:3000`
-4. View API docs at `http://localhost:3000/docs`
-
 ### Adding Custom Models/Nodes
 
 Modify `Dockerfile.runpod.serverless`:
@@ -275,7 +249,6 @@ ENV COMFY_LOG_LEVEL=DEBUG
 runpod-serverless/
 ├── src/
 │   ├── handler.py              # Enhanced RunPod handler with validation
-│   ├── api_server.py          # Local API server for testing
 │   └── start.sh                # Production startup script
 ├── Dockerfile.runpod.serverless # Docker build configuration
 ├── requirements.txt            # Python dependencies
