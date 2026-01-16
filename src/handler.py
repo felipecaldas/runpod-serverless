@@ -27,7 +27,17 @@ from config import (
 from logging_utils import log_with_job, setup_logging
 from outputs import OutputProcessor
 from telemetry import get_container_disk_info, get_container_memory_info
-from workflows import load_workflow_template, prepare_workflow, upload_input_image, workflow_requires_input_image
+from workflows import (
+    load_workflow_template,
+    prepare_workflow,
+    upload_input_image,
+    upload_input_video,
+    workflow_requires_frame_rate,
+    workflow_requires_input_image,
+    workflow_requires_input_video,
+    workflow_requires_output_resolution,
+    workflow_requires_prompt,
+)
 
 torch.backends.cuda.enable_flash_sdp(False)
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -37,8 +47,9 @@ torch.set_float32_matmul_precision("medium")
 INPUT_SCHEMA: Dict[str, Any] = {
     "prompt": {
         "type": str,
-        "required": True,
-        "constraints": lambda prompt: isinstance(prompt, str) and len(prompt) > 0,
+        "required": False,
+        "default": "",
+        "constraints": lambda prompt: prompt in (None, "") or (isinstance(prompt, str) and len(prompt) > 0),
     },
     "image": {
         "type": str,
@@ -54,6 +65,14 @@ INPUT_SCHEMA: Dict[str, Any] = {
         "required": False,
         "default": "video_wan2_2_14B_i2v",
     },
+    "video": {
+        "type": str,
+        "required": False,
+        "default": "",
+        "constraints": lambda video: video in (None, "") or (isinstance(video, str) and len(video) > 0),
+    },
+    "frame_rate": {"type": int, "required": False, "default": 24},
+    "output_resolution": {"type": int, "required": False},
     "comfy_org_api_key": {"type": str, "required": False},
 }
 
@@ -81,11 +100,14 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
             return {"error": "\n".join(validated_input["errors"])}
 
         job_input = validated_input["validated_input"]
-        prompt = job_input["prompt"]
+        prompt = job_input.get("prompt", "")
         image_b64 = job_input.get("image")
+        video_b64 = job_input.get("video")
         width = job_input.get("width", 480)
         height = job_input.get("height", 640)
         length = job_input.get("length", 81)
+        frame_rate = job_input.get("frame_rate", 24)
+        output_resolution = job_input.get("output_resolution")
         workflow_name = job_input.get("comfyui_workflow_name", "video_wan2_2_14B_i2v")
         comfy_org_api_key = job_input.get("comfy_org_api_key")
 
@@ -104,6 +126,9 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
         log_with_job(logging.info, "Loading workflow template", job_id)
         workflow_template = load_workflow_template(workflow_name)
 
+        if workflow_requires_prompt(workflow_template) and not prompt:
+            return {"error": "'prompt' is required for this workflow."}
+
         uploaded_filename = ""
         if workflow_requires_input_image(workflow_template):
             if not image_b64:
@@ -111,6 +136,18 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
 
             log_with_job(logging.info, "Uploading input image to ComfyUI", job_id)
             uploaded_filename = upload_input_image(image_b64, job_id, width, height, client)
+
+        uploaded_video_filename = ""
+        if workflow_requires_input_video(workflow_template):
+            if not video_b64:
+                return {"error": "'video' is required for this workflow."}
+
+            log_with_job(logging.info, "Uploading input video to ComfyUI", job_id)
+            uploaded_video_filename = upload_input_video(video_b64, job_id, client)
+
+        if workflow_requires_output_resolution(workflow_template) and output_resolution is None:
+            return {"error": "'output_resolution' is required for this workflow."}
+
         workflow = prepare_workflow(
             workflow_template,
             prompt,
@@ -119,6 +156,9 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
             height,
             length,
             job_id,
+            video_filename=uploaded_video_filename,
+            frame_rate=frame_rate if workflow_requires_frame_rate(workflow_template) else None,
+            output_resolution=output_resolution,
         )
 
         log_with_job(logging.info, "Submitting workflow to ComfyUI", job_id)

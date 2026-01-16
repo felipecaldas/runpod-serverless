@@ -68,7 +68,8 @@ WORKFLOW_TEMPLATES: Dict[str, str] = {
     "image_qwen_t2i": "image_qwen_image_distill_official_comfyui.json",
     "image_disneyizt_t2i": "disneyizt-imagez-t2v.json",
     "crayon-drawing": "crayon-drawing.json",
-    "I2V-Wan-2.2-Lightning-runpod": "I2V-Wan-2.2-Lightning-runpod.json"
+    "I2V-Wan-2.2-Lightning-runpod": "I2V-Wan-2.2-Lightning-runpod.json",
+    "upscale": "seedvr2_video_upscale.json",
 }
 
 

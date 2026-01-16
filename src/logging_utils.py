@@ -7,7 +7,24 @@ from typing import Callable, Optional
 
 import os
 import requests
-from runpod.serverless.modules.rp_logger import RunPodLogger
+try:
+    from runpod.serverless.modules.rp_logger import RunPodLogger
+except ModuleNotFoundError:
+    class RunPodLogger:  # type: ignore[no-redef]
+        def set_level(self, _: str) -> None:
+            return
+
+        def debug(self, *_: object, **__: object) -> None:
+            return
+
+        def info(self, *_: object, **__: object) -> None:
+            return
+
+        def warn(self, *_: object, **__: object) -> None:
+            return
+
+        def error(self, *_: object, **__: object) -> None:
+            return
 
 from config import APP_NAME, LOG_LEVEL, WS_DEBUG_FILE
 

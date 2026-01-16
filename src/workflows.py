@@ -26,7 +26,21 @@ WORKFLOW_TEMPLATES: Dict[str, str] = {
     "image_disneyizt_t2i": "disneyizt-imagez-t2v.json",
     "crayon-drawing": "crayon-drawing.json",
     "I2V-Wan-2.2-Lightning-runpod": "I2V-Wan-2.2-Lightning-runpod.json",
+    "upscale": "seedvr2_video_upscale.json",
 }
+
+
+def workflow_requires_token(workflow: Dict[str, Any], token: str) -> bool:
+    """Return True when the workflow template contains the given placeholder token."""
+
+    def _contains(value: Any) -> bool:
+        if isinstance(value, dict):
+            return any(_contains(item) for item in value.values())
+        if isinstance(value, list):
+            return any(_contains(item) for item in value)
+        return value == token
+
+    return _contains(workflow)
 
 
 def load_workflow_template(workflow_name: str) -> Dict[str, Any]:
@@ -44,15 +58,32 @@ def load_workflow_template(workflow_name: str) -> Dict[str, Any]:
 
 def workflow_requires_input_image(workflow: Dict[str, Any]) -> bool:
     """Return True when the workflow template includes an input image placeholder."""
+    return workflow_requires_token(workflow, "{{ INPUT_IMAGE }}")
 
-    def _contains(value: Any) -> bool:
-        if isinstance(value, dict):
-            return any(_contains(item) for item in value.values())
-        if isinstance(value, list):
-            return any(_contains(item) for item in value)
-        return value == "{{ INPUT_IMAGE }}"
 
-    return _contains(workflow)
+def workflow_requires_input_video(workflow: Dict[str, Any]) -> bool:
+    """Return True when the workflow template includes an input video placeholder."""
+    return workflow_requires_token(workflow, "{{ INPUT_VIDEO }}")
+
+
+def workflow_requires_frame_rate(workflow: Dict[str, Any]) -> bool:
+    """Return True when the workflow template includes a frame-rate placeholder."""
+    return workflow_requires_token(workflow, "{{ FRAME_RATE }}")
+
+
+def workflow_requires_output_resolution(workflow: Dict[str, Any]) -> bool:
+    """Return True when the workflow template includes an output resolution placeholder."""
+    return workflow_requires_token(workflow, "{{ OUTPUT_RESOLUTION }}")
+
+
+def workflow_requires_prompt(workflow: Dict[str, Any]) -> bool:
+    """Return True when the workflow template includes a prompt placeholder."""
+    prompt_tokens = {
+        "{{ VIDEO_PROMPT }}",
+        "{{ POSITIVE_PROMPT }}",
+        "{{ IMAGE_PROMPT }}",
+    }
+    return any(workflow_requires_token(workflow, token) for token in prompt_tokens)
 
 
 def upload_input_image(
@@ -91,6 +122,44 @@ def upload_input_image(
         os.unlink(temp_file_path)
 
 
+def upload_input_video(
+    video_data_uri: str,
+    job_id: str,
+    client: "ComfyClient",
+) -> str:
+    """Decode and upload a base64-encoded video to ComfyUI, returning the filename."""
+    try:
+        mime_type = "video/mp4"
+        payload = video_data_uri
+        if video_data_uri.startswith("data:") and "," in video_data_uri:
+            header, payload = video_data_uri.split(",", 1)
+            mime_type = header.split(";", 1)[0].replace("data:", "") or mime_type
+
+        blob = base64.b64decode(payload)
+    except Exception as exc:
+        raise ValueError(f"Invalid base64 video data: {exc}") from exc
+
+    ext_by_mime = {
+        "video/mp4": ".mp4",
+        "video/quicktime": ".mov",
+        "video/webm": ".webm",
+        "video/x-matroska": ".mkv",
+    }
+    suffix = ext_by_mime.get(mime_type, ".mp4")
+
+    filename = f"{uuid.uuid4()}{suffix}"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+        temp_file.write(blob)
+        temp_file_path = temp_file.name
+
+    try:
+        client.upload_input_file(filename, temp_file_path, mime_type)
+        log_with_job(logging.info, f"Successfully uploaded video as {filename}", job_id)
+        return filename
+    finally:
+        os.unlink(temp_file_path)
+
+
 def prepare_workflow(
     workflow: Dict[str, Any],
     prompt: str,
@@ -99,9 +168,21 @@ def prepare_workflow(
     height: int,
     length: int,
     job_id: str,
+    video_filename: str = "",
+    frame_rate: int | None = None,
+    output_resolution: int | None = None,
 ) -> Dict[str, Any]:
     """Prepare a workflow by injecting prompt, image, dimensions, and unique filenames."""
-    workflow = substitute_workflow_placeholders(workflow, prompt, image_filename, width, height)
+    workflow = substitute_workflow_placeholders(
+        workflow,
+        prompt,
+        image_filename,
+        width,
+        height,
+        video_filename=video_filename,
+        frame_rate=frame_rate,
+        output_resolution=output_resolution,
+    )
 
     try:
         set_workflow_dimensions(workflow, width, height, length)
@@ -118,6 +199,9 @@ def substitute_workflow_placeholders(
     image_filename: str,
     width: int,
     height: int,
+    video_filename: str = "",
+    frame_rate: int | None = None,
+    output_resolution: int | None = None,
 ) -> Dict[str, Any]:
     """Replace placeholder tokens within the workflow template."""
 
@@ -138,6 +222,12 @@ def substitute_workflow_placeholders(
             return width
         if value == "{{ IMAGE_HEIGHT }}":
             return height
+        if value == "{{ INPUT_VIDEO }}":
+            return video_filename
+        if value == "{{ FRAME_RATE }}":
+            return frame_rate if frame_rate is not None else value
+        if value == "{{ OUTPUT_RESOLUTION }}":
+            return output_resolution if output_resolution is not None else value
         return value
 
     return _replace(workflow)
@@ -171,3 +261,10 @@ def create_unique_filename_prefix(workflow: Dict[str, Any]) -> None:
         if isinstance(node, dict) and node.get("class_type") == "SaveImage":
             inputs = node.setdefault("inputs", {})
             inputs["filename_prefix"] = str(uuid.uuid4())
+
+    for node in workflow.values():
+        if isinstance(node, dict) and node.get("class_type") == "VHS_VideoCombine":
+            inputs = node.setdefault("inputs", {})
+            prefix = inputs.get("filename_prefix")
+            unique = str(uuid.uuid4())
+            inputs["filename_prefix"] = f"{prefix}_{unique}" if prefix else unique

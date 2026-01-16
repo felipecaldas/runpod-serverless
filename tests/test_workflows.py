@@ -69,3 +69,36 @@ def test_load_workflow_template_disneyizt_t2i_substitutes_placeholders() -> None
     assert "{{ IMAGE_WIDTH }}" not in payload
     assert "{{ IMAGE_HEIGHT }}" not in payload
     assert "hello" in payload
+
+
+def test_substitute_workflow_placeholders_replaces_video_tokens() -> None:
+    template = {
+        "1": {"inputs": {"video": "{{ INPUT_VIDEO }}" }},
+        "2": {"inputs": {"frame_rate": "{{ FRAME_RATE }}" }},
+        "3": {"inputs": {"resolution": "{{ OUTPUT_RESOLUTION }}" }},
+    }
+    rendered = substitute_workflow_placeholders(
+        template,
+        "",
+        "",
+        0,
+        0,
+        video_filename="input.mp4",
+        frame_rate=24,
+        output_resolution=720,
+    )
+
+    payload = json.dumps(rendered)
+    assert "{{ INPUT_VIDEO }}" not in payload
+    assert "{{ FRAME_RATE }}" not in payload
+    assert "{{ OUTPUT_RESOLUTION }}" not in payload
+    assert rendered["1"]["inputs"]["video"] == "input.mp4"
+    assert rendered["2"]["inputs"]["frame_rate"] == 24
+    assert rendered["3"]["inputs"]["resolution"] == 720
+
+
+def test_create_unique_filename_prefix_updates_vhs_video_combine() -> None:
+    template = {"1": {"class_type": "VHS_VideoCombine", "inputs": {"filename_prefix": "seedvr2_upscaled"}}}
+    create_unique_filename_prefix(template)
+    prefix = template["1"]["inputs"]["filename_prefix"]
+    assert prefix.startswith("seedvr2_upscaled_")

@@ -71,6 +71,12 @@ class ComfyClient:
             response = self.session.post(f"{BASE_URI}/upload/image", files=files, timeout=30)
             response.raise_for_status()
 
+    def upload_input_file(self, filename: str, file_path: str, mime_type: str) -> None:
+        with open(file_path, "rb") as file_handle:
+            files = {"image": (filename, file_handle, mime_type), "overwrite": (None, "true")}
+            response = self.session.post(f"{BASE_URI}/upload/image", files=files, timeout=60)
+            response.raise_for_status()
+
     def get_output_file_data(self, filename: str, subfolder: str, file_type: str) -> bytes:
         params = {"filename": filename, "subfolder": subfolder, "type": file_type}
         response = self.session.get(f"{BASE_URI}/view", params=params, timeout=30)
