@@ -171,6 +171,7 @@ def prepare_workflow(
     video_filename: str = "",
     frame_rate: int | None = None,
     output_resolution: int | None = None,
+    batch_size: int | None = None,
 ) -> Dict[str, Any]:
     """Prepare a workflow by injecting prompt, image, dimensions, and unique filenames."""
     workflow = substitute_workflow_placeholders(
@@ -182,6 +183,7 @@ def prepare_workflow(
         video_filename=video_filename,
         frame_rate=frame_rate,
         output_resolution=output_resolution,
+        batch_size=batch_size,
     )
 
     try:
@@ -202,6 +204,7 @@ def substitute_workflow_placeholders(
     video_filename: str = "",
     frame_rate: int | None = None,
     output_resolution: int | None = None,
+    batch_size: int | None = None,
 ) -> Dict[str, Any]:
     """Replace placeholder tokens within the workflow template."""
 
@@ -228,6 +231,8 @@ def substitute_workflow_placeholders(
             return frame_rate if frame_rate is not None else value
         if value == "{{ OUTPUT_RESOLUTION }}":
             return output_resolution if output_resolution is not None else value
+        if value == "{{ BATCH_SIZE }}":
+            return batch_size if batch_size is not None else value
         return value
 
     return _replace(workflow)

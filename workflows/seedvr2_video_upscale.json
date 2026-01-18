@@ -54,7 +54,7 @@
       "seed": 373242515,
       "resolution": "{{ OUTPUT_RESOLUTION }}",
       "max_resolution": 1980,
-      "batch_size": 29,
+      "batch_size": "{{ BATCH_SIZE }}",
       "uniform_batch_size": null,
       "color_correction": "lab",
       "temporal_overlap": 0,

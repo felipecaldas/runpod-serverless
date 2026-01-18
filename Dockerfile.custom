@@ -53,7 +53,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --upgrade pip setuptools wheel
 
 # Install PyTorch with CUDA support
-RUN pip install torch==2.3.1 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+RUN pip install torch==2.4.1 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 # Tag the completed base image
 FROM base AS torch-base

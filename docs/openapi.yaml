@@ -57,6 +57,7 @@ paths:
         | `image_disneyizt_t2i` | `workflows/disneyizt-imagez-t2v.json` |
         | `crayon-drawing` | `workflows/crayon-drawing.json` |
         | `I2V-Wan-2.2-Lightning-runpod` | `workflows/I2V-Wan-2.2-Lightning-runpod.json` |
+        | `seedvr2_video_upscale` | `workflows/seedvr2_video_upscale.json` |
       requestBody:
         required: true
         content:
@@ -82,6 +83,16 @@ paths:
                     width: 480
                     height: 640
                     length: 81
+                    comfy_org_api_key: "<COMFY_ORG_API_KEY>"
+              video_upscale:
+                summary: Video upscaling with SeedVR2
+                value:
+                  input:
+                    video: "data:video/mp4;base64,<BASE64...>"
+                    width: 1920
+                    height: 1080
+                    output_resolution: 1920
+                    comfyui_workflow_name: "seedvr2_video_upscale"
                     comfy_org_api_key: "<COMFY_ORG_API_KEY>"
       responses:
         '200':
@@ -165,34 +176,37 @@ components:
           description: >-
             RunPod job payload that the worker uses to populate and submit the
             selected ComfyUI workflow template.
-          required:
-            - prompt
           properties:
             prompt:
               type: string
-              description: Natural language description that guides the workflow.
+              description: Natural language description that guides the workflow (required for text/image-to-video workflows, optional for upscaling).
             image:
               type: string
               description: >-
                 Optional base64-encoded input image.
 
+                Used for image-to-video workflows, not used for upscaling.
                 May be either a plain base64 string, or a data URI such as
                 `data:image/png;base64,<BASE64...>`.
             width:
               type: integer
               minimum: 64
               default: 480
-              description: Output video width in pixels.
+              description: Output video width in pixels (required for image-to-video, mandatory for upscaling input dimensions).
             height:
               type: integer
               minimum: 64
               default: 640
-              description: Output video height in pixels.
+              description: Output video height in pixels (required for image-to-video, mandatory for upscaling input dimensions).
             length:
               type: integer
               minimum: 1
               default: 81
-              description: Number of frames to generate.
+              description: Number of frames to generate (required for video generation, optional for upscaling).
+            output_resolution:
+              type: integer
+              nullable: true
+              description: Output resolution for video upscaling workflows (e.g., 1980 for SeedVR2 upscaling).
             comfyui_workflow_name:
               type: string
               default: video_wan2_2_14B_i2v
@@ -205,10 +219,15 @@ components:
                 - image_disneyizt_t2i
                 - crayon-drawing
                 - I2V-Wan-2.2-Lightning-runpod
+                - seedvr2_video_upscale
             comfy_org_api_key:
               type: string
               nullable: true
-              description: Optional Comfy.Org API key.
+              description: Optional Comfy.Org API key (may be required for specific workflows).
+            batch_size:
+              type: integer
+              default: 29
+              description: Batch size for processing frames in video upscaling workflows (optional, defaults to 29).
     RunResponse:
       type: object
       required:

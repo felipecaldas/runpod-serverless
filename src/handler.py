@@ -74,6 +74,7 @@ INPUT_SCHEMA: Dict[str, Any] = {
     "frame_rate": {"type": int, "required": False, "default": 24},
     "output_resolution": {"type": int, "required": False},
     "comfy_org_api_key": {"type": str, "required": False},
+    "batch_size": {"type": int, "required": False, "default": 29},
 }
 
 
@@ -110,6 +111,7 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
         output_resolution = job_input.get("output_resolution")
         workflow_name = job_input.get("comfyui_workflow_name", "video_wan2_2_14B_i2v")
         comfy_org_api_key = job_input.get("comfy_org_api_key")
+        batch_size = job_input.get("batch_size", 29)
 
         log_with_job(
             logging.info,
@@ -159,6 +161,7 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
             video_filename=uploaded_video_filename,
             frame_rate=frame_rate if workflow_requires_frame_rate(workflow_template) else None,
             output_resolution=output_resolution,
+            batch_size=batch_size,
         )
 
         log_with_job(logging.info, "Submitting workflow to ComfyUI", job_id)
