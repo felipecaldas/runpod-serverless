@@ -151,6 +151,19 @@ RUN mkdir -p /comfyui/models/checkpoints \
 # Copy application sources (handler, utilities, scripts)
 COPY src /src
 
+RUN python - <<'PY'
+from pathlib import Path
+
+p = Path("/src/start.sh")
+b = p.read_bytes()
+
+if b.startswith(b"\xef\xbb\xbf"):
+    b = b[3:]
+
+b = b.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+p.write_bytes(b)
+PY
+
 # Copy validation schemas
 COPY schemas /schemas
 
