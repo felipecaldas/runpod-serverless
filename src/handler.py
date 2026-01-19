@@ -17,6 +17,8 @@ import runpod
 import torch
 from runpod.serverless.utils.rp_validator import validate
 
+from input_schema import INPUT_SCHEMA
+
 from comfy_client import ComfyClient
 from config import (
     APP_NAME,
@@ -42,41 +44,6 @@ from workflows import (
 torch.backends.cuda.enable_flash_sdp(False)
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.set_float32_matmul_precision("medium")
-
-
-INPUT_SCHEMA: Dict[str, Any] = {
-    "prompt": {
-        "type": str,
-        "required": False,
-        "default": "",
-        "constraints": lambda prompt: prompt in (None, "") or (isinstance(prompt, str) and len(prompt) > 0),
-    },
-    "image": {
-        "type": str,
-        "required": False,
-        "default": "",
-        "constraints": lambda image: image in (None, "") or (isinstance(image, str) and len(image) > 0),
-    },
-    "width": {"type": int, "required": False, "default": 480},
-    "height": {"type": int, "required": False, "default": 640},
-    "length": {"type": int, "required": False, "default": 81},
-    "comfyui_workflow_name": {
-        "type": str,
-        "required": False,
-        "default": "video_wan2_2_14B_i2v",
-    },
-    "video": {
-        "type": str,
-        "required": False,
-        "default": "",
-        "constraints": lambda video: video in (None, "") or (isinstance(video, str) and len(video) > 0),
-    },
-    "frame_rate": {"type": int, "required": False, "default": 24},
-    "output_resolution": {"type": int, "required": False},
-    "comfy_org_api_key": {"type": str, "required": False},
-    "batch_size": {"type": int, "required": False, "default": 29},
-}
-
 
 client = ComfyClient()
 output_processor = OutputProcessor(client)
