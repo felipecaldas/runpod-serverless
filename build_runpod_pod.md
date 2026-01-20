@@ -42,7 +42,7 @@ See `docker-image-optimization-journey.md` for the full story of how we got here
 docker run --rm -it `
   -e CUDA_VISIBLE_DEVICES="" `
   -p 8188:8188 `
-  fcaldas/tabario.com:1.1-wan22 `
+  fcaldas/tabario.com:1.5.0 `
   bash -lc "cd /comfyui && /opt/venv/bin/python main.py --listen 0.0.0.0 --port 8188 --cpu"
 ```
 
@@ -196,19 +196,19 @@ cd y:\projects\edit-videos
 # Build with new version tag
 docker build `
   -f .\Dockerfile.runpod.serverless `
-  -t fcaldas/tabario.com:1.1-wan22 `
+  -t fcaldas/tabario.com:1.5.0 `
   .
 
 # Test locally first
 docker run --rm -it `
   -e CUDA_VISIBLE_DEVICES="" `
   -p 8188:8188 `
-  fcaldas/tabario.com:1.1-wan22 `
+  fcaldas/tabario.com:1.5.0 `
   bash -lc "cd /comfyui && /opt/venv/bin/python main.py --listen 0.0.0.0 --port 8188 --cpu"
 
 # If tests pass, push to Docker Hub
 docker login
-docker push fcaldas/tabario.com:1.1-wan22
+docker push fcaldas/tabario.com:1.5.0
 ```
 
 Update your RunPod template to use the new image tag (1.1-wan22).

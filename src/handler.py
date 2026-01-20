@@ -220,7 +220,7 @@ def _has_final_assets(result: Dict[str, Any]) -> bool:
         if not isinstance(node_output, dict):
             continue
 
-        for collection in ("images", "videos"):
+        for collection in ("images", "videos", "gifs"):
             entries = node_output.get(collection, [])
             if not isinstance(entries, list):
                 continue
@@ -228,6 +228,13 @@ def _has_final_assets(result: Dict[str, Any]) -> bool:
             for asset_info in entries:
                 if not isinstance(asset_info, dict):
                     continue
+
+                if collection in {"videos", "gifs"}:
+                    filename = asset_info.get("filename", "")
+                    if isinstance(filename, str) and filename.lower().endswith(
+                        (".mp4", ".mov", ".webm", ".mkv", ".avi")
+                    ):
+                        return True
 
                 if asset_info.get("type", "output") != "temp":
                     return True

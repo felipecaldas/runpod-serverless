@@ -1,0 +1,124 @@
+# Base image for ComfyUI RunPod serverless worker
+# Contains CUDA + OS deps + torch + ComfyUI + custom nodes.
+
+FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04 AS base
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3.11-dev \
+    python3.11-venv \
+    python3-pip \
+    git \
+    wget \
+    curl \
+    build-essential \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    libgtk-3-0 \
+    ffmpeg \
+    libturbojpeg \
+    libtiff5 \
+    libpng16-16 \
+    libjpeg-turbo8 \
+    libopenjp2-7 \
+    libwebp7 \
+    libwebpmux3 \
+    libwebpdemux2 \
+    libopenexr25 \
+    libgstreamer1.0-0 \
+    libgstreamer-plugins-base1.0-0 \
+    libgstreamer-plugins-good1.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python3.11 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+RUN pip install --upgrade pip setuptools wheel
+
+RUN pip install torch==2.4.1 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+
+FROM base AS comfyui
+WORKDIR /comfyui
+
+RUN git clone https://github.com/comfyanonymous/ComfyUI.git . && \
+    git fetch --all --tags && \
+    git checkout $(git describe --tags $(git rev-list --tags --max-count=1)) && \
+    rm -rf .git
+
+RUN pip install -r requirements.txt
+
+RUN pip install \
+    transformers \
+    accelerate \
+    safetensors \
+    diffusers \
+    opencv-python \
+    imageio \
+    imageio-ffmpeg \
+    einops \
+    omegaconf \
+    scikit-image \
+    pillow \
+    numpy \
+    scipy \
+    matplotlib \
+    tqdm \
+    psutil
+
+FROM comfyui AS base_with_nodes
+WORKDIR /comfyui
+
+ARG GGUF_REF=main
+ARG VFI_REF=main
+ARG VHS_REF=main
+
+RUN git clone --depth 1 --branch ${GGUF_REF} https://github.com/city96/ComfyUI-GGUF.git /comfyui/custom_nodes/ComfyUI-GGUF && \
+    git clone --depth 1 --branch ${VFI_REF} https://github.com/Fannovel16/ComfyUI-Frame-Interpolation.git /comfyui/custom_nodes/ComfyUI-Frame-Interpolation && \
+    git clone --depth 1 --branch ${VHS_REF} https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git /comfyui/custom_nodes/ComfyUI-VideoHelperSuite && \
+    git clone --depth 1 https://github.com/city96/ComfyUI_ExtraModels.git /comfyui/custom_nodes/ComfyUI_ExtraModels && \
+    git clone --depth 1 https://github.com/SeanScripts/ComfyUI-Unload-Model.git /comfyui/custom_nodes/ComfyUI-Unload-Model && \
+    git clone --depth 1 https://github.com/yolain/ComfyUI-Easy-Use.git /comfyui/custom_nodes/ComfyUI-Easy-Use && \
+    git clone --depth 1 https://github.com/rgthree/rgthree-comfy.git /comfyui/custom_nodes/rgthree-comfy && \
+    git clone --depth 1 https://github.com/numz/ComfyUI-SeedVR2_VideoUpscaler.git /comfyui/custom_nodes/ComfyUI-SeedVR2_VideoUpscaler && \
+    git clone --depth 1 https://github.com/chrisgoringe/cg-use-everywhere.git /comfyui/custom_nodes/cg-use-everywhere && \
+    cd /comfyui/custom_nodes/ComfyUI-Easy-Use && \
+    if [ -f "install.sh" ]; then bash install.sh || echo "Warning: ComfyUI-Easy-Use install script failed, continuing..."; fi && \
+    cd /comfyui/custom_nodes/rgthree-comfy && \
+    if [ -f "requirements.txt" ]; then pip install -r requirements.txt; fi && \
+    cd /comfyui/custom_nodes/ComfyUI-SeedVR2_VideoUpscaler && \
+    if [ -f "requirements.txt" ]; then pip install -r requirements.txt; fi && \
+    cd /comfyui/custom_nodes/cg-use-everywhere && \
+    if [ -f "requirements.txt" ]; then pip install -r requirements.txt; fi && \
+    find /comfyui/custom_nodes -type d -name .git -prune -exec rm -rf '{}' +
+
+RUN pip install rotary-embedding-torch
+
+RUN mkdir -p /comfyui/models/checkpoints \
+    /comfyui/models/clip \
+    /comfyui/models/clip_vision \
+    /comfyui/models/configs \
+    /comfyui/models/controlnet \
+    /comfyui/models/embeddings \
+    /comfyui/models/loras \
+    /comfyui/models/upscale_models \
+    /comfyui/models/vae \
+    /comfyui/models/unet \
+    /comfyui/models/diffusion_models \
+    /comfyui/models/text_encoders
+
+ENV PYTHONUNBUFFERED=true
+ENV CUDA_VISIBLE_DEVICES=0
+ENV TF_FORCE_GPU_ALLOW_GROWTH=true
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+ENV HF_HOME="/comfyui"
+ENV COMFY_LOG_LEVEL=INFO
+ENV PYTHONPATH=/comfyui

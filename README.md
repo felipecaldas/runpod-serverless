@@ -25,6 +25,37 @@ The solution consists of:
 
 ### 1. Build the Docker Image
 
+This repository supports a two-image workflow to make Python-only changes fast:
+
+- **Base image** (`:base-1.0`): CUDA + OS deps + torch + ComfyUI + custom nodes (rare rebuild)
+- **App image** (e.g. `:1.5.0`): worker code + schemas + workflows (frequent rebuild)
+
+The build entrypoint is `build_custom.ps1`.
+
+#### Build (base/app split)
+
+```powershell
+# Build base image (rare)
+./build_custom.ps1 -Target base -ImageName "fcaldas/tabario.com" -BaseImageTag "base-1.0"
+
+# Build app image (fast for python-only changes)
+./build_custom.ps1 -Target app -ImageName "fcaldas/tabario.com" -BaseImageTag "base-1.0" -ImageTag "1.5.0"
+```
+
+#### Build + push
+
+```powershell
+docker login
+
+# Build + push base image
+./build_custom.ps1 -Target base -ImageName "fcaldas/tabario.com" -BaseImageTag "base-1.0" -Push
+
+# Build + push app image
+./build_custom.ps1 -Target app -ImageName "fcaldas/tabario.com" -BaseImageTag "base-1.0" -ImageTag "1.5.0" -Push
+```
+
+#### Legacy single Dockerfile build
+
 ```powershell
 cd y:\projects\runpod-serverless
 
@@ -230,6 +261,13 @@ RUN wget -O models/checkpoints/your_model.safetensors https://url-to-model
    - Verify AWS credentials and permissions
    - Check bucket name and region
    - Ensure endpoint URL is correct
+
+4. **Video workflows stuck IN_PROGRESS even though the mp4 exists in `/comfyui/output`**
+   - ComfyUI history is keyed by the ComfyUI `prompt_id` (returned from `POST /prompt`), not the RunPod job id.
+   - To inspect history, query:
+     - `curl http://127.0.0.1:8188/history`
+     - `curl http://127.0.0.1:8188/history/<prompt_id>`
+   - With `ComfyUI-VideoHelperSuite`, final mp4 outputs may appear under `outputs.<node>.gifs` (even though the file is an `.mp4`). Older worker versions that only looked for `images`/`videos` in history could miss the mp4 and keep polling for “final assets”.
 
 ### Debug Mode
 

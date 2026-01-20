@@ -38,10 +38,7 @@ class OutputProcessor:
         buckets: Dict[str, List[Dict[str, str]]],
         job_id: str,
     ) -> None:
-        collections = {
-            key: node_output.get(key, [])
-            for key in ("images", "videos")
-        }
+        collections = {key: node_output.get(key, []) for key in ("images", "videos", "gifs")}
 
         for entries in collections.values():
             if not isinstance(entries, list):
@@ -52,11 +49,14 @@ class OutputProcessor:
                 subfolder = asset_info.get("subfolder", "")
                 asset_type = asset_info.get("type", "output")
 
-                if not filename or asset_type == "temp":
+                if not filename:
                     continue
 
                 bucket_key = self._resolve_bucket(filename)
-                asset_bytes = self._client.get_output_file_data(filename, subfolder, asset_type)
+                if asset_type == "temp" and bucket_key != "videos":
+                    continue
+
+                asset_bytes = self._fetch_asset_bytes(filename, subfolder, asset_type, bucket_key)
 
                 if os.environ.get("BUCKET_ENDPOINT_URL"):
                     buckets[bucket_key].append({
@@ -70,6 +70,28 @@ class OutputProcessor:
                         "type": "base64",
                         "data": base64.b64encode(asset_bytes).decode("utf-8"),
                     })
+
+    def _fetch_asset_bytes(
+        self,
+        filename: str,
+        subfolder: str,
+        asset_type: str,
+        bucket_key: str,
+    ) -> bytes:
+        """Fetch the asset data from ComfyUI, retrying common mismatches for temp videos."""
+
+        preferred_types = [asset_type]
+        if asset_type == "temp" and bucket_key == "videos":
+            preferred_types = ["output", "temp"]
+
+        last_error: Exception | None = None
+        for file_type in preferred_types:
+            try:
+                return self._client.get_output_file_data(filename, subfolder, file_type)
+            except Exception as exc:  # pragma: no cover - network/filesystem dependent
+                last_error = exc
+
+        raise RuntimeError(f"Failed to retrieve asset '{filename}' from ComfyUI") from last_error
 
     @staticmethod
     def _resolve_bucket(filename: str) -> str:
