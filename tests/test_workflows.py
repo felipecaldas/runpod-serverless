@@ -97,6 +97,20 @@ def test_substitute_workflow_placeholders_replaces_video_tokens() -> None:
     assert rendered["3"]["inputs"]["resolution"] == 720
 
 
+def test_substitute_workflow_placeholders_replaces_image_style_prompt() -> None:
+    template = {"1": {"inputs": {"style": "{{ IMAGE_STYLE_PROMPT }}"}}}
+    rendered = substitute_workflow_placeholders(
+        template,
+        "",
+        "",
+        0,
+        0,
+        image_style_prompt="YOUR CONTEXT:\nVintage\nYOUR PHOTO:\n{$@}",
+    )
+
+    assert rendered["1"]["inputs"]["style"] == "YOUR CONTEXT:\nVintage\nYOUR PHOTO:\n{$@}"
+
+
 def test_create_unique_filename_prefix_updates_vhs_video_combine() -> None:
     template = {"1": {"class_type": "VHS_VideoCombine", "inputs": {"filename_prefix": "seedvr2_upscaled"}}}
     create_unique_filename_prefix(template)

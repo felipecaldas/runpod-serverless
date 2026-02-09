@@ -58,6 +58,7 @@ paths:
         | `crayon-drawing` | `workflows/crayon-drawing.json` |
         | `I2V-Wan-2.2-Lightning-runpod` | `workflows/I2V-Wan-2.2-Lightning-runpod.json` |
         | `seedvr2_video_upscale` | `workflows/seedvr2_video_upscale.json` |
+        | `z-image-photo` | `workflows/z-image-photo-various-styles.json` |
       requestBody:
         required: true
         content:
@@ -93,6 +94,16 @@ paths:
                     height: 1080
                     output_resolution: 1920
                     comfyui_workflow_name: "seedvr2_video_upscale"
+                    comfy_org_api_key: "<COMFY_ORG_API_KEY>"
+              styled_photo:
+                summary: Styled photo generation (z-image-photo)
+                value:
+                  input:
+                    prompt: "<PROMPT_TEXT>"
+                    image_style: "Vintage"
+                    width: 720
+                    height: 1024
+                    comfyui_workflow_name: "z-image-photo"
                     comfy_org_api_key: "<COMFY_ORG_API_KEY>"
       responses:
         '200':
@@ -220,6 +231,24 @@ components:
                 - crayon-drawing
                 - I2V-Wan-2.2-Lightning-runpod
                 - seedvr2_video_upscale
+                - z-image-photo
+            image_style:
+              type: string
+              nullable: true
+              description: Optional image style name used by style-aware workflows (for example, z-image-photo) to inject a style prompt block.
+              enum:
+                - Film Noir
+                - 90s Flash
+                - Phone
+                - Vintage
+                - Production
+                - Classic Film
+                - Drone Photo
+                - High Key Fashion
+                - Light and Airy
+                - Teal and Orange
+                - Street Documentary
+                - Pop
             comfy_org_api_key:
               type: string
               nullable: true

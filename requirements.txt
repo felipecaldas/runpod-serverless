@@ -10,6 +10,7 @@ opencv-python>=4.8.0
 gguf>=0.13.0
 sentencepiece>=0.1.99
 protobuf>=4.25.3
+PyYAML>=6.0.1
 
 # ComfyUI dependencies (already included in base image, but listed for reference)
 # torch>=2.0.0

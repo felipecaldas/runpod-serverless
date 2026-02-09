@@ -11,6 +11,7 @@ from io import BytesIO
 from typing import Any, Dict, TYPE_CHECKING
 
 from PIL import Image
+import yaml
 
 from logging_utils import log_with_job
 
@@ -27,7 +28,53 @@ WORKFLOW_TEMPLATES: Dict[str, str] = {
     "crayon-drawing": "crayon-drawing.json",
     "I2V-Wan-2.2-Lightning-runpod": "I2V-Wan-2.2-Lightning-runpod.json",
     "seedvr2_video_upscale": "seedvr2_video_upscale.json",
+    "z-image-photo": "z-image-photo-various-styles.json",
 }
+
+
+STYLES_YAML_PATH = os.path.join(
+    os.path.dirname(__file__),
+    "..",
+    "workflows",
+    "styles",
+    "z-image-photo-styles.yaml",
+)
+
+
+def load_image_style_prompts() -> Dict[str, str]:
+    """Load image style prompts from the YAML file.
+
+    Returns:
+        Mapping of style name -> prompt string.
+    """
+
+    with open(STYLES_YAML_PATH, "r", encoding="utf-8") as handle:
+        payload = yaml.safe_load(handle)
+
+    styles = payload.get("styles") if isinstance(payload, dict) else None
+    if not isinstance(styles, list):
+        raise ValueError("Invalid styles YAML: expected top-level 'styles' list")
+
+    prompts: Dict[str, str] = {}
+    for item in styles:
+        if not isinstance(item, dict) or len(item) != 1:
+            raise ValueError("Invalid styles YAML: each style must be a single-key mapping")
+        name, prompt = next(iter(item.items()))
+        if not isinstance(name, str) or not isinstance(prompt, str) or not name.strip() or not prompt.strip():
+            raise ValueError("Invalid styles YAML: style name and prompt must be non-empty strings")
+        prompts[name] = prompt
+
+    return prompts
+
+
+def resolve_image_style_prompt(image_style: str) -> str:
+    """Resolve an image_style name into its prompt block from the styles YAML."""
+
+    prompts = load_image_style_prompts()
+    try:
+        return prompts[image_style]
+    except KeyError as exc:
+        raise ValueError(f"Unknown image_style '{image_style}'") from exc
 
 
 def workflow_requires_token(workflow: Dict[str, Any], token: str) -> bool:
@@ -172,6 +219,7 @@ def prepare_workflow(
     frame_rate: int | None = None,
     output_resolution: int | None = None,
     batch_size: int | None = None,
+    image_style_prompt: str | None = None,
 ) -> Dict[str, Any]:
     """Prepare a workflow by injecting prompt, image, dimensions, and unique filenames."""
     workflow = substitute_workflow_placeholders(
@@ -184,6 +232,7 @@ def prepare_workflow(
         frame_rate=frame_rate,
         output_resolution=output_resolution,
         batch_size=batch_size,
+        image_style_prompt=image_style_prompt,
     )
 
     try:
@@ -205,6 +254,7 @@ def substitute_workflow_placeholders(
     frame_rate: int | None = None,
     output_resolution: int | None = None,
     batch_size: int | None = None,
+    image_style_prompt: str | None = None,
 ) -> Dict[str, Any]:
     """Replace placeholder tokens within the workflow template."""
 
@@ -233,6 +283,8 @@ def substitute_workflow_placeholders(
             return output_resolution if output_resolution is not None else value
         if value == "{{ BATCH_SIZE }}":
             return batch_size if batch_size is not None else value
+        if value == "{{ IMAGE_STYLE_PROMPT }}":
+            return image_style_prompt if image_style_prompt is not None else value
         return value
 
     return _replace(workflow)

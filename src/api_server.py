@@ -22,6 +22,8 @@ from typing import Dict, Any
 
 import yaml
 
+from workflows import resolve_image_style_prompt
+
 app = FastAPI(title='RunPod Serverless Worker API')
 
 OPENAPI_SPEC_PATH = Path(__file__).resolve().parent.parent / "docs" / "openapi.yaml"
@@ -70,6 +72,7 @@ WORKFLOW_TEMPLATES: Dict[str, str] = {
     "crayon-drawing": "crayon-drawing.json",
     "I2V-Wan-2.2-Lightning-runpod": "I2V-Wan-2.2-Lightning-runpod.json",
     "seedvr2_video_upscale": "seedvr2_video_upscale.json",
+    "z-image-photo": "z-image-photo-various-styles.json",
 }
 
 
@@ -127,10 +130,28 @@ async def run_endpoint(request: Request):
             raise HTTPException(status_code=400, detail="'input' must be an object")
 
         workflow_name = job_input.get('comfyui_workflow_name', 'video_wan2_2_14B_i2v')
+        image_style = job_input.get('image_style')
         try:
             workflow = load_workflow_template(workflow_name)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
+
+        if image_style is not None:
+            try:
+                style_prompt = resolve_image_style_prompt(image_style)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc))
+
+            def _replace(value: Any) -> Any:
+                if isinstance(value, dict):
+                    return {key: _replace(item) for key, item in value.items()}
+                if isinstance(value, list):
+                    return [_replace(item) for item in value]
+                if value == "{{ IMAGE_STYLE_PROMPT }}":
+                    return style_prompt
+                return value
+
+            workflow = _replace(workflow)
         
         print(f"Submitting workflow '{workflow_name}' to ComfyUI: {json.dumps(workflow)[:200]}...")
         

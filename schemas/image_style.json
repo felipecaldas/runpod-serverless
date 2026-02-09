@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ImageStyle",
+  "description": "Permitted values for the optional image_style input parameter.",
+  "type": ["string", "null"],
+  "enum": [
+    null,
+    "Film Noir",
+    "90s Flash",
+    "Phone",
+    "Vintage",
+    "Production",
+    "Classic Film",
+    "Drone Photo",
+    "High Key Fashion",
+    "Light and Airy",
+    "Teal and Orange",
+    "Street Documentary",
+    "Pop"
+  ]
+}

@@ -1,0 +1,746 @@
+{
+  "6": {
+    "inputs": {
+      "text": [
+        "166",
+        0
+      ],
+      "clip": [
+        "392",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encoder"
+    }
+  },
+  "9": {
+    "inputs": {
+      "filename_prefix": "ZI",
+      "images": [
+        "522",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "31": {
+    "inputs": {
+      "string": [
+        "87",
+        0
+      ],
+      "find": "{$@}",
+      "replace": [
+        "385",
+        0
+      ]
+    },
+    "class_type": "StringReplace",
+    "_meta": {
+      "title": "STYLE INTEGRATOR"
+    }
+  },
+  "37": {
+    "inputs": {
+      "value": "{{ IMAGE_STYLE_PROMPT }}"
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "STYLE"
+    }
+  },
+  "50": {
+    "inputs": {
+      "add_noise": "enable",
+      "noise_seed": [
+        "307",
+        0
+      ],
+      "steps": 8,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "start_at_step": 0,
+      "end_at_step": 10000,
+      "return_with_leftover_noise": "disable",
+      "positive": [
+        "54",
+        0
+      ],
+      "negative": [
+        "60",
+        0
+      ],
+      "latent_image": [
+        "56",
+        0
+      ]
+    },
+    "class_type": "KSamplerAdvanced",
+    "_meta": {
+      "title": "KSampler (Advanced)"
+    }
+  },
+  "54": {
+    "inputs": {
+      "text": "A stunning waist-up portrait of a beautiful 25-year-old brunette woman with warm honey-colored eyes and smooth, youthful skin. Her rich brown hair is pulled back in a sleek ponytail. She stands with her arms relaxed at her sides, hands out of frame below the waist. Her face shows a gentle, warm smile with a natural and engaging gaze, radiating approachable charm and youthful energy. She wears simple earth-toned clothing that complements the natural setting. The composition focuses on her face and upper body against a magnificent park setting featuring towering ancient sequoia trees in the background, their massive reddish-brown trunks rising majestically behind her. Dappled natural sunlight filters through the canopy, creating a warm, ethereal glow. Shallow depth of field keeps her in crisp, sharp focus while the sequoias provide an impressive but beautifully blurred, bokeh-rich backdrop. Professional photography, natural lighting, 50mm lens aesthetic, photorealistic, high detail, youthful complexion, fresh-faced beauty, cinematic color grading with earthy tones, subtle warmth in shadows, lifestyle portrait style. dancing"
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Positive Prompt)"
+    }
+  },
+  "56": {
+    "inputs": {
+      "width": 944,
+      "height": 1408,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "Empty Latent Image"
+    }
+  },
+  "60": {
+    "inputs": {
+      "text": ""
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "68": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "Default Euler Sampler"
+    }
+  },
+  "87": {
+    "inputs": {
+      "any_09": [
+        "37",
+        0
+      ]
+    },
+    "class_type": "Any Switch (rgthree)",
+    "_meta": {
+      "title": "Any Switch (rgthree)"
+    }
+  },
+  "96": {
+    "inputs": {
+      "any_02": [
+        "68",
+        0
+      ]
+    },
+    "class_type": "Any Switch (rgthree)",
+    "_meta": {
+      "title": "Sampler Chooser"
+    }
+  },
+  "146": {
+    "inputs": {
+      "string": [
+        "31",
+        0
+      ],
+      "find": "{$spicy-content-with}",
+      "replace": ""
+    },
+    "class_type": "StringReplace",
+    "_meta": {
+      "title": "DEFAULT: No Spicy Inpact"
+    }
+  },
+  "151": {
+    "inputs": {
+      "any_02": [
+        "146",
+        0
+      ]
+    },
+    "class_type": "Any Switch (rgthree)",
+    "_meta": {
+      "title": "Chooser"
+    }
+  },
+  "165": {
+    "inputs": {
+      "output": "",
+      "source": [
+        "166",
+        0
+      ]
+    },
+    "class_type": "Display Any (rgthree)",
+    "_meta": {
+      "title": "FINAL TEXT VIEWER"
+    }
+  },
+  "166": {
+    "inputs": {
+      "string": [
+        "151",
+        0
+      ],
+      "find": "  ",
+      "replace": " "
+    },
+    "class_type": "StringReplace",
+    "_meta": {
+      "title": "Fix Double Spaces"
+    }
+  },
+  "180": {
+    "inputs": {
+      "pixels": [
+        "341",
+        0
+      ],
+      "vae": [
+        "574",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode"
+    }
+  },
+  "181": {
+    "inputs": {
+      "add_noise": true,
+      "noise_seed": 969696,
+      "cfg": 1,
+      "model": [
+        "392",
+        0
+      ],
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "6",
+        0
+      ],
+      "sampler": [
+        "371",
+        0
+      ],
+      "sigmas": [
+        "346",
+        0
+      ],
+      "latent_image": [
+        "180",
+        0
+      ]
+    },
+    "class_type": "SamplerCustom",
+    "_meta": {
+      "title": "SamplerCustom"
+    }
+  },
+  "189": {
+    "inputs": {
+      "step": 2,
+      "sigmas": [
+        "195",
+        0
+      ]
+    },
+    "class_type": "SplitSigmas",
+    "_meta": {
+      "title": "SplitSigmas"
+    }
+  },
+  "195": {
+    "inputs": {
+      "steps": 5,
+      "sigma_max": 1,
+      "sigma_min": 0.2,
+      "rho": 0.7
+    },
+    "class_type": "KarrasScheduler",
+    "_meta": {
+      "title": "Karras Scheduler (sigmas)"
+    }
+  },
+  "243": {
+    "inputs": {
+      "value": "{{ IMAGE_WIDTH }}"
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "Default Short Side"
+    }
+  },
+  "244": {
+    "inputs": {
+      "width": [
+        "536",
+        0
+      ],
+      "height": [
+        "537",
+        0
+      ],
+      "batch_size": [
+        "443",
+        0
+      ]
+    },
+    "class_type": "EmptySD3LatentImage",
+    "_meta": {
+      "title": "EmptySD3LatentImage"
+    }
+  },
+  "248": {
+    "inputs": {
+      "value": "{{ IMAGE_HEIGHT }}"
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "Default Long Side"
+    }
+  },
+  "249": {
+    "inputs": {
+      "any_02": [
+        "248",
+        0
+      ]
+    },
+    "class_type": "Any Switch (rgthree)",
+    "_meta": {
+      "title": "Long Side Chooser"
+    }
+  },
+  "279": {
+    "inputs": {
+      "add_noise": true,
+      "noise_seed": 696969,
+      "cfg": 1,
+      "model": [
+        "392",
+        0
+      ],
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "6",
+        0
+      ],
+      "sampler": [
+        "377",
+        0
+      ],
+      "sigmas": [
+        "189",
+        1
+      ],
+      "latent_image": [
+        "286",
+        0
+      ]
+    },
+    "class_type": "SamplerCustom",
+    "_meta": {
+      "title": "SamplerCustom"
+    }
+  },
+  "286": {
+    "inputs": {
+      "add_noise": false,
+      "noise_seed": [
+        "307",
+        0
+      ],
+      "cfg": 1,
+      "model": [
+        "392",
+        0
+      ],
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "6",
+        0
+      ],
+      "sampler": [
+        "96",
+        0
+      ],
+      "sigmas": [
+        "316",
+        0
+      ],
+      "latent_image": [
+        "289",
+        0
+      ]
+    },
+    "class_type": "SamplerCustom",
+    "_meta": {
+      "title": "SamplerCustom"
+    }
+  },
+  "289": {
+    "inputs": {
+      "add_noise": true,
+      "noise_seed": [
+        "307",
+        0
+      ],
+      "cfg": 1,
+      "model": [
+        "392",
+        0
+      ],
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "6",
+        0
+      ],
+      "sampler": [
+        "96",
+        0
+      ],
+      "sigmas": [
+        "325",
+        0
+      ],
+      "latent_image": [
+        "244",
+        0
+      ]
+    },
+    "class_type": "SamplerCustom",
+    "_meta": {
+      "title": "SamplerCustom"
+    }
+  },
+  "307": {
+    "inputs": {
+      "value": 1
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "SEED"
+    }
+  },
+  "316": {
+    "inputs": {
+      "any_02": [
+        "324",
+        0
+      ]
+    },
+    "class_type": "Any Switch (rgthree)",
+    "_meta": {
+      "title": "Low Sigmas Switcher"
+    }
+  },
+  "321": {
+    "inputs": {
+      "steps": 8,
+      "sigma_max": 0.99,
+      "sigma_min": 0.08,
+      "rho": 0.3
+    },
+    "class_type": "KarrasScheduler",
+    "_meta": {
+      "title": "Karras Scheduler 8-Steps"
+    }
+  },
+  "322": {
+    "inputs": {
+      "step": 2,
+      "sigmas": [
+        "321",
+        0
+      ]
+    },
+    "class_type": "SplitSigmas",
+    "_meta": {
+      "title": "Split Sigmas [2] + [6]"
+    }
+  },
+  "323": {
+    "inputs": {
+      "sigma": 0.906,
+      "sigmas": [
+        "322",
+        1
+      ]
+    },
+    "class_type": "SetFirstSigma",
+    "_meta": {
+      "title": "Set First Sigma"
+    }
+  },
+  "324": {
+    "inputs": {
+      "steps": 2,
+      "start_at_sigma": 1,
+      "end_at_sigma": 0.8,
+      "spacing": "linear",
+      "sigmas": [
+        "323",
+        0
+      ]
+    },
+    "class_type": "ExtendIntermediateSigmas",
+    "_meta": {
+      "title": "ExtendIntermediateSigmas"
+    }
+  },
+  "325": {
+    "inputs": {
+      "any_02": [
+        "322",
+        0
+      ]
+    },
+    "class_type": "Any Switch (rgthree)",
+    "_meta": {
+      "title": "High Sigmas Switcher"
+    }
+  },
+  "341": {
+    "inputs": {
+      "seed": 699669,
+      "strength": 0.04,
+      "image": [
+        "344",
+        0
+      ]
+    },
+    "class_type": "ImageAddNoise",
+    "_meta": {
+      "title": "Add Noise"
+    }
+  },
+  "344": {
+    "inputs": {
+      "measurement": "percentage",
+      "width": 150,
+      "height": 0,
+      "fit": "contain",
+      "method": "area",
+      "image": [
+        "522",
+        0
+      ]
+    },
+    "class_type": "Image Resize (rgthree)",
+    "_meta": {
+      "title": "Resize Image +50%"
+    }
+  },
+  "346": {
+    "inputs": {
+      "steps": 3,
+      "sigma_max": 0.17,
+      "sigma_min": 0.06,
+      "rho": 0.6
+    },
+    "class_type": "KarrasScheduler",
+    "_meta": {
+      "title": "Karras Scheduler (sigmas)"
+    }
+  },
+  "371": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "Default Euler Sampler"
+    }
+  },
+  "377": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "Default Euler Sampler"
+    }
+  },
+  "385": {
+    "inputs": {
+      "string": "{{ IMAGE_PROMPT }}",
+      "mode": "Both"
+    },
+    "class_type": "StringTrim",
+    "_meta": {
+      "title": "(used for reroute)"
+    }
+  },
+  "392": {
+    "inputs": {
+      "PowerLoraLoaderHeaderWidget": {
+        "type": "PowerLoraLoaderHeaderWidget"
+      },
+      "➕ Add Lora": "",
+      "model": [
+        "572",
+        0
+      ],
+      "clip": [
+        "573",
+        0
+      ]
+    },
+    "class_type": "Power Lora Loader (rgthree)",
+    "_meta": {
+      "title": "Power Lora Loader (rgthree)"
+    }
+  },
+  "443": {
+    "inputs": {
+      "value": 1
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "Batch Size"
+    }
+  },
+  "522": {
+    "inputs": {
+      "any_02": [
+        "526",
+        0
+      ]
+    },
+    "class_type": "Any Switch (rgthree)",
+    "_meta": {
+      "title": "Image Chooser"
+    }
+  },
+  "524": {
+    "inputs": {
+      "any_02": [
+        "522",
+        0
+      ]
+    },
+    "class_type": "Any Switch (rgthree)",
+    "_meta": {
+      "title": "\"PHOTO\" Mode"
+    }
+  },
+  "526": {
+    "inputs": {
+      "samples": [
+        "286",
+        0
+      ],
+      "vae": [
+        "574",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "532": {
+    "inputs": {
+      "any_01": [
+        "524",
+        0
+      ]
+    },
+    "class_type": "Any Switch (rgthree)",
+    "_meta": {
+      "title": "Any Switch (rgthree)"
+    }
+  },
+  "534": {
+    "inputs": {
+      "any_02": [
+        "243",
+        0
+      ]
+    },
+    "class_type": "Any Switch (rgthree)",
+    "_meta": {
+      "title": "Short Side Chooser"
+    }
+  },
+  "536": {
+    "inputs": {
+      "any_02": [
+        "534",
+        0
+      ]
+    },
+    "class_type": "Any Switch (rgthree)",
+    "_meta": {
+      "title": "Width Long/Short Chooser"
+    }
+  },
+  "537": {
+    "inputs": {
+      "any_02": [
+        "249",
+        0
+      ]
+    },
+    "class_type": "Any Switch (rgthree)",
+    "_meta": {
+      "title": "Height Long/Short Chooser"
+    }
+  },
+  "572": {
+    "inputs": {
+      "unet_name": "z_image_turbo_bf16.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "573": {
+    "inputs": {
+      "clip_name": "qwen_3_4b.safetensors",
+      "type": "lumina2",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "574": {
+    "inputs": {
+      "vae_name": "ae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  }
+}

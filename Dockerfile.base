@@ -80,10 +80,12 @@ WORKDIR /comfyui
 ARG GGUF_REF=main
 ARG VFI_REF=main
 ARG VHS_REF=main
+ARG MULTIGPU_REF=main
 
 RUN git clone --depth 1 --branch ${GGUF_REF} https://github.com/city96/ComfyUI-GGUF.git /comfyui/custom_nodes/ComfyUI-GGUF && \
     git clone --depth 1 --branch ${VFI_REF} https://github.com/Fannovel16/ComfyUI-Frame-Interpolation.git /comfyui/custom_nodes/ComfyUI-Frame-Interpolation && \
     git clone --depth 1 --branch ${VHS_REF} https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git /comfyui/custom_nodes/ComfyUI-VideoHelperSuite && \
+    git clone --depth 1 --branch ${MULTIGPU_REF} https://github.com/pollockjj/ComfyUI-MultiGPU.git /comfyui/custom_nodes/ComfyUI-MultiGPU && \
     git clone --depth 1 https://github.com/city96/ComfyUI_ExtraModels.git /comfyui/custom_nodes/ComfyUI_ExtraModels && \
     git clone --depth 1 https://github.com/SeanScripts/ComfyUI-Unload-Model.git /comfyui/custom_nodes/ComfyUI-Unload-Model && \
     git clone --depth 1 https://github.com/yolain/ComfyUI-Easy-Use.git /comfyui/custom_nodes/ComfyUI-Easy-Use && \
@@ -97,6 +99,8 @@ RUN git clone --depth 1 --branch ${GGUF_REF} https://github.com/city96/ComfyUI-G
     cd /comfyui/custom_nodes/ComfyUI-SeedVR2_VideoUpscaler && \
     if [ -f "requirements.txt" ]; then pip install -r requirements.txt; fi && \
     cd /comfyui/custom_nodes/cg-use-everywhere && \
+    if [ -f "requirements.txt" ]; then pip install -r requirements.txt; fi && \
+    cd /comfyui/custom_nodes/ComfyUI-MultiGPU && \
     if [ -f "requirements.txt" ]; then pip install -r requirements.txt; fi && \
     find /comfyui/custom_nodes -type d -name .git -prune -exec rm -rf '{}' +
 

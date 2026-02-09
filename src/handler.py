@@ -32,6 +32,8 @@ from telemetry import get_container_disk_info, get_container_memory_info
 from workflows import (
     load_workflow_template,
     prepare_workflow,
+    resolve_image_style_prompt,
+    workflow_requires_token,
     upload_input_image,
     upload_input_video,
     workflow_requires_frame_rate,
@@ -79,6 +81,7 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
         workflow_name = job_input.get("comfyui_workflow_name", "video_wan2_2_14B_i2v")
         comfy_org_api_key = job_input.get("comfy_org_api_key")
         batch_size = job_input.get("batch_size", 29)
+        image_style = job_input.get("image_style")
 
         log_with_job(
             logging.info,
@@ -94,6 +97,16 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
 
         log_with_job(logging.info, "Loading workflow template", job_id)
         workflow_template = load_workflow_template(workflow_name)
+
+        image_style_prompt: str | None = None
+        if workflow_requires_token(workflow_template, "{{ IMAGE_STYLE_PROMPT }}"):
+            if image_style is None:
+                image_style_prompt = ""
+            else:
+                try:
+                    image_style_prompt = resolve_image_style_prompt(image_style)
+                except ValueError as exc:
+                    return {"error": str(exc)}
 
         if workflow_requires_prompt(workflow_template) and not prompt:
             return {"error": "'prompt' is required for this workflow."}
@@ -129,6 +142,7 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
             frame_rate=frame_rate if workflow_requires_frame_rate(workflow_template) else None,
             output_resolution=output_resolution,
             batch_size=batch_size,
+            image_style_prompt=image_style_prompt,
         )
 
         log_with_job(logging.info, "Submitting workflow to ComfyUI", job_id)

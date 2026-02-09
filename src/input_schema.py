@@ -38,6 +38,27 @@ INPUT_SCHEMA: Dict[str, Any] = {
         "default": None,
         "constraints": lambda value: value is None or (isinstance(value, int) and value > 0),
     },
+    "image_style": {
+        "type": (str, type(None)),
+        "required": False,
+        "default": None,
+        "constraints": lambda value: value is None
+        or value
+        in (
+            "Film Noir",
+            "90s Flash",
+            "Phone",
+            "Vintage",
+            "Production",
+            "Classic Film",
+            "Drone Photo",
+            "High Key Fashion",
+            "Light and Airy",
+            "Teal and Orange",
+            "Street Documentary",
+            "Pop",
+        ),
+    },
     "comfy_org_api_key": {"type": str, "required": False, "default": ""},
     "batch_size": {"type": int, "required": False, "default": 29},
 }
