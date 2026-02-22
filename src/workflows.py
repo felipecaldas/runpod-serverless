@@ -267,8 +267,6 @@ def substitute_workflow_placeholders(
             return prompt
         if value == "{{ POSITIVE_PROMPT }}":
             return prompt
-        if value == "{{ IMAGE_PROMPT }}":
-            return prompt
         if value == "{{ INPUT_IMAGE }}":
             return image_filename
         if value == "{{ IMAGE_WIDTH }}":

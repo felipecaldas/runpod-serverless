@@ -9,7 +9,7 @@ echo "Building custom ComfyUI RunPod serverless worker (CUDA base + optimization
 
 # Build arguments
 IMAGE_NAME="fcaldas/tabario.com"
-IMAGE_TAG="1.5.1"
+IMAGE_TAG="1.5.3"
 DOCKERFILE="Dockerfile.custom"
 
 echo "Building image: $IMAGE_NAME:$IMAGE_TAG"

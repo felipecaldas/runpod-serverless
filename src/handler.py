@@ -22,9 +22,9 @@ from input_schema import INPUT_SCHEMA
 from comfy_client import ComfyClient
 from config import (
     APP_NAME,
-    COMFY_HISTORY_ATTEMPTS,
     COMFY_HISTORY_DELAY_SECONDS,
     DISK_MIN_FREE_BYTES,
+    ENSURE_ASSETS_TIMEOUT_S,
 )
 from logging_utils import log_with_job, setup_logging
 from outputs import OutputProcessor
@@ -192,32 +192,50 @@ def _ensure_final_assets(
     client: ComfyClient,
     job_id: str,
 ) -> Dict[str, Any]:
-    """Poll ComfyUI history until workflow assets are finalized or retries are exhausted."""
+    """Poll ComfyUI history until workflow assets are finalized, an error is detected, or the timeout expires."""
 
     if _has_final_assets(result):
         return result
 
     log_with_job(logging.info, "Waiting for workflow assets to finalize", job_id)
     latest_result = result
+    deadline = time.monotonic() + ENSURE_ASSETS_TIMEOUT_S
+    attempt = 0
 
-    for attempt in range(COMFY_HISTORY_ATTEMPTS):
+    while time.monotonic() < deadline:
         time.sleep(COMFY_HISTORY_DELAY_SECONDS)
+        attempt += 1
         refreshed = client.fetch_history(prompt_id, job_id)
         if refreshed is None:
             continue
 
         latest_result = refreshed
+
+        # Check for execution errors reported by ComfyUI
+        status_data = refreshed.get("status", {})
+        if isinstance(status_data, dict):
+            status_errors = status_data.get("status_str")
+            if status_errors == "error":
+                error_messages = status_data.get("messages", [])
+                log_with_job(
+                    logging.error,
+                    f"ComfyUI reported execution error for prompt {prompt_id}: {error_messages}",
+                    job_id,
+                )
+                return {"error": f"ComfyUI execution error: {error_messages}"}
+
         if _has_final_assets(refreshed):
             log_with_job(
                 logging.info,
-                f"Workflow assets finalized after {attempt + 1} refresh attempt(s)",
+                f"Workflow assets finalized after {attempt} refresh attempt(s)",
                 job_id,
             )
             return refreshed
 
+    elapsed = int(ENSURE_ASSETS_TIMEOUT_S)
     log_with_job(
         logging.warning,
-        "Workflow assets did not finalize within the allotted retries; proceeding with available data",
+        f"Workflow assets did not finalize within {elapsed}s timeout; proceeding with available data",
         job_id,
     )
     return latest_result

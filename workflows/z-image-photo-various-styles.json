@@ -88,7 +88,7 @@
   },
   "54": {
     "inputs": {
-      "text": "A stunning waist-up portrait of a beautiful 25-year-old brunette woman with warm honey-colored eyes and smooth, youthful skin. Her rich brown hair is pulled back in a sleek ponytail. She stands with her arms relaxed at her sides, hands out of frame below the waist. Her face shows a gentle, warm smile with a natural and engaging gaze, radiating approachable charm and youthful energy. She wears simple earth-toned clothing that complements the natural setting. The composition focuses on her face and upper body against a magnificent park setting featuring towering ancient sequoia trees in the background, their massive reddish-brown trunks rising majestically behind her. Dappled natural sunlight filters through the canopy, creating a warm, ethereal glow. Shallow depth of field keeps her in crisp, sharp focus while the sequoias provide an impressive but beautifully blurred, bokeh-rich backdrop. Professional photography, natural lighting, 50mm lens aesthetic, photorealistic, high detail, youthful complexion, fresh-faced beauty, cinematic color grading with earthy tones, subtle warmth in shadows, lifestyle portrait style. dancing"
+      "text": "{{ POSITIVE_PROMPT }}"
     },
     "class_type": "CLIPTextEncode",
     "_meta": {
@@ -108,7 +108,7 @@
   },
   "60": {
     "inputs": {
-      "text": ""
+      "text": "low quality, bad anatomy, asian faces"
     },
     "class_type": "CLIPTextEncode",
     "_meta": {
@@ -588,7 +588,7 @@
   },
   "385": {
     "inputs": {
-      "string": "{{ IMAGE_PROMPT }}",
+      "string": "{{ POSITIVE_PROMPT }}",
       "mode": "Both"
     },
     "class_type": "StringTrim",

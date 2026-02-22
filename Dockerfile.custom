@@ -134,6 +134,11 @@ WORKDIR /comfyui
 # Ensure runtime dependency for ComfyUI-SeedVR2_VideoUpscaler is installed
 RUN pip install rotary-embedding-torch
 
+# Pre-bake RIFE frame-interpolation model (avoids runtime 404 from GitHub releases)
+RUN mkdir -p /comfyui/custom_nodes/ComfyUI-Frame-Interpolation/ckpts/rife && \
+    wget -q -O /comfyui/custom_nodes/ComfyUI-Frame-Interpolation/ckpts/rife/rife47.pth \
+    "https://huggingface.co/jasonot/mycomfyui/resolve/main/rife47.pth"
+
 # Create directories for model symlinks
 RUN mkdir -p /comfyui/models/checkpoints \
     /comfyui/models/clip \
