@@ -94,7 +94,7 @@
       "pingpong": false,
       "save_output": true,
       "images": [
-        "6",
+        "4",
         0
       ],
       "audio": [
@@ -105,24 +105,6 @@
     "class_type": "VHS_VideoCombine",
     "_meta": {
       "title": "Video Combine 🎥🅥🅗🅢"
-    }
-  },
-  "6": {
-    "inputs": {
-      "ckpt_name": "rife47.pth",
-      "clear_cache_after_n_frames": 10,
-      "multiplier": 2,
-      "fast_mode": true,
-      "ensemble": true,
-      "scale_factor": 1,
-      "frames": [
-        "4",
-        0
-      ]
-    },
-    "class_type": "RIFE VFI",
-    "_meta": {
-      "title": "RIFE VFI (recommend rife47 and rife49)"
     }
   }
 }

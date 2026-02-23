@@ -129,9 +129,9 @@
   },
   "94": {
     "inputs": {
-      "fps": 16,
+      "fps": 32,
       "images": [
-        "87",
+        "109",
         0
       ]
     },
@@ -264,6 +264,24 @@
     "class_type": "SaveVideo",
     "_meta": {
       "title": "Save Video"
+    }
+  },
+  "109": {
+    "inputs": {
+      "ckpt_name": "rife47.pth",
+      "clear_cache_after_n_frames": 10,
+      "multiplier": 2,
+      "fast_mode": true,
+      "ensemble": true,
+      "scale_factor": 1,
+      "frames": [
+        "87",
+        0
+      ]
+    },
+    "class_type": "RIFE VFI",
+    "_meta": {
+      "title": "RIFE VFI (recommend rife47 and rife49)"
     }
   }
 }
